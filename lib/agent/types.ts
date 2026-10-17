@@ -1,8 +1,12 @@
 /**
- * Run-stream contracts from ARCHITECTURE.md §9. Types only; the agent nodes and
- * validateClaims() are Phase 2. The evidence model lives in lib/evidence/types.ts.
+ * Run-stream contracts from ARCHITECTURE.md §9, extended in Phase 2 for agent decisions.
+ * Events describe what was proposed and what actually ran; they never carry model
+ * reasoning, secrets or raw Qloo payloads. The evidence model lives in lib/evidence.
  */
 import type { ToolCallRecord } from "@/lib/qloo/types";
+
+import type { ModelStage } from "./budget";
+import type { AgentRunStatus, Decision } from "./schemas";
 
 export type { EvidenceId, EvidenceItem, Quadrant } from "@/lib/evidence/types";
 
@@ -19,13 +23,18 @@ export type NodeName =
   | "repair"
   | "assembleReport";
 
-export type RunStatus = "complete" | "partial" | "failed";
+/** @deprecated Phase 1 name; use AgentRunStatus. */
+export type RunStatus = AgentRunStatus;
 
-/** NDJSON stream contract for POST /api/runs (Phase 3). `plan.ready` lands with the plan schema in Phase 2. */
 export type RunEvent =
   | { t: "run.started"; runId: string; budget: { qloo: number; llm: number } }
   | { t: "node.started" | "node.finished"; node: NodeName; ms?: number; summary?: string }
+  | { t: "plan.ready"; source: "model" | "fallback"; categories: string[]; anchors: string[]; adjustments: string[] }
   | { t: "tool.call"; record: ToolCallRecord }
   | { t: "evidence.added"; count: number; category: string }
+  | { t: "decision"; decision: Decision }
+  | { t: "finding.added"; count: number }
+  | { t: "llm.call"; stage: ModelStage; ok: boolean; ms: number; inputTokens: number; outputTokens: number; error?: string }
+  | { t: "claims.validated"; checked: number; autoCited: number; downgraded: number; removed: number; repaired: boolean }
   | { t: "warning"; code: string; message: string }
-  | { t: "run.finished"; runId: string; status: RunStatus };
+  | { t: "run.finished"; runId: string; status: AgentRunStatus };
