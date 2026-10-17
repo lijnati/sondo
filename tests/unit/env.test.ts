@@ -70,3 +70,26 @@ describe("parseServerEnv", () => {
     }
   });
 });
+
+describe("agent model env", () => {
+  it("defaults to the free model and a $0.15 run cap", () => {
+    const env = parseServerEnv({});
+    expect(env.SONDO_MODEL).toBe("nvidia/nemotron-3.5-lightning-free");
+    expect(env.SONDO_RUN_COST_LIMIT_USD).toBe(0.15);
+    expect(env.SONDO_MODEL_INPUT_USD_PER_MTOK).toBeUndefined();
+  });
+
+  it("treats empty numeric/model vars as unset, not zero", () => {
+    const env = parseServerEnv({ SONDO_RUN_COST_LIMIT_USD: "", SONDO_MODEL: " ", SONDO_MODEL_OUTPUT_USD_PER_MTOK: "" });
+    expect(env.SONDO_RUN_COST_LIMIT_USD).toBe(0.15);
+    expect(env.SONDO_MODEL).toBe("nvidia/nemotron-3.5-lightning-free");
+    expect(env.SONDO_MODEL_OUTPUT_USD_PER_MTOK).toBeUndefined();
+  });
+
+  it("accepts overrides and rejects malformed model ids and absurd caps", () => {
+    const env = parseServerEnv({ SONDO_MODEL: "openai/gpt-5-mini", SONDO_RUN_COST_LIMIT_USD: "0.05", SONDO_MODEL_INPUT_USD_PER_MTOK: "0.25" });
+    expect(env).toMatchObject({ SONDO_MODEL: "openai/gpt-5-mini", SONDO_RUN_COST_LIMIT_USD: 0.05, SONDO_MODEL_INPUT_USD_PER_MTOK: 0.25 });
+    expect(() => parseServerEnv({ SONDO_MODEL: "gpt5-mini" })).toThrow(/SONDO_MODEL/);
+    expect(() => parseServerEnv({ SONDO_RUN_COST_LIMIT_USD: "50" })).toThrow(/SONDO_RUN_COST_LIMIT_USD/);
+  });
+});
