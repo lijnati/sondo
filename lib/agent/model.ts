@@ -4,7 +4,7 @@
  * and never passes through Sondo code. Every call is reserved against the run budget,
  * bound to the run's AbortSignal and a per-call timeout, and recorded with token usage.
  */
-import { APICallError, generateText, NoOutputGeneratedError, Output, type LanguageModel, type ToolSet } from "ai";
+import { APICallError, generateText, NoOutputGeneratedError, Output, tool, type LanguageModel, type ToolSet } from "ai";
 import type { z } from "zod";
 
 import { BudgetError, type ModelStage, type RunTracker } from "./budget";
@@ -28,6 +28,8 @@ export interface ModelDeps {
   modelId: string;
   /** Strings that must never appear in diagnostics (e.g. the gateway key). */
   secrets?: string[];
+  /** Defaults by model id (structuredModeFor). */
+  structuredMode?: StructuredMode;
 }
 
 /** Rough token estimate for budget checks before a call (≈ 4 characters per token). */
@@ -48,7 +50,7 @@ function toModelError(err: unknown, stage: ModelStage, tracker: RunTracker, secr
   }
   if (NoOutputGeneratedError.isInstance(err)) return new AgentModelError("no_output", stage, "Model returned no valid structured output");
   const name = err instanceof Error ? err.name : "";
-  if (/NoObjectGenerated|TypeValidation|JSONParse|InvalidToolInput|NoSuchTool/.test(name)) {
+  if (/NoObjectGenerated|TypeValidation|JSONParse|InvalidToolInput|NoSuchTool|ToolChoiceViolation/.test(name)) {
     return new AgentModelError("no_output", stage, `Model output failed validation (${name})`);
   }
   if (APICallError.isInstance(err)) {
@@ -127,11 +129,40 @@ export function generateStructured<S extends z.ZodType>(
   tracker: RunTracker,
   input: CallInput & { schema: S; name: string },
 ): Promise<z.output<S>> {
+  const mode = deps.structuredMode ?? structuredModeFor(deps.modelId);
   return run(deps, tracker, input, async (common) => {
-    const r = await generateText({ ...common, output: Output.object({ schema: input.schema, name: input.name }) });
-    return { value: r.output as z.output<S>, usage: r.usage, providerMetadata: r.providerMetadata };
+    if (mode === "output") {
+      const r = await generateText({ ...common, output: Output.object({ schema: input.schema, name: input.name }) });
+      return { value: r.output as z.output<S>, usage: r.usage, providerMetadata: r.providerMetadata };
+    }
+    // Structured output through one forced tool call, for models without native JSON-schema
+    // output. The tool has no `execute`; its input is validated against the same schema.
+    const r = await generateText({
+      ...common,
+      tools: { [input.name]: tool({ description: `Submit the ${input.name.replace(/_/g, " ")}.`, inputSchema: input.schema }) },
+      toolChoice: { type: "tool", toolName: input.name },
+    });
+    const call = r.toolCalls.find((c) => c.toolName === input.name);
+    const parsed = call ? input.schema.safeParse(call.input) : undefined;
+    if (!parsed?.success) {
+      throw Object.assign(new AgentModelError("no_output", input.stage, call ? "Model output failed schema validation" : "Model did not submit a structured result"), {
+        usage: r.usage,
+      });
+    }
+    return { value: parsed.data as z.output<S>, usage: r.usage, providerMetadata: r.providerMetadata };
   });
 }
+
+/**
+ * How to get structured output from a model. Native JSON-schema output where the provider
+ * supports it; otherwise a forced tool call (verified needed for the free nemotron model:
+ * the gateway reports "responseFormat is not supported"). Override with SONDO_STRUCTURED_MODE.
+ */
+export function structuredModeFor(modelId: string): StructuredMode {
+  return /^(openai|anthropic|google)\//.test(modelId) ? "output" : "tool";
+}
+
+export type StructuredMode = "output" | "tool";
 
 export interface ProposedCall {
   toolName: string;

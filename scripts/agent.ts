@@ -160,7 +160,7 @@ async function main() {
       brief,
       {
         qloo: ({ maxCalls, onCall }) => cliClient({ budget: { maxCalls }, fileCache: !flag("no-cache"), onCall }),
-        model: { model: env.SONDO_MODEL, modelId: noModel ? "none (--no-model)" : env.SONDO_MODEL, secrets: [env.AI_GATEWAY_API_KEY ?? "", env.QLOO_API_KEY as string] },
+        model: { model: env.SONDO_MODEL, modelId: noModel ? "none (--no-model)" : env.SONDO_MODEL, secrets: [env.AI_GATEWAY_API_KEY ?? "", env.QLOO_API_KEY as string], ...(env.SONDO_STRUCTURED_MODE ? { structuredMode: env.SONDO_STRUCTURED_MODE } : {}) },
         price,
         budget: { runCostLimitUsd: env.SONDO_RUN_COST_LIMIT_USD, ...(noModel ? { llmCalls: 0 } : {}) },
       },

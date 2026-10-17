@@ -39,6 +39,8 @@ export const ServerEnvSchema = z.object({
   /** Optional USD per million tokens, for models the built-in price table doesn't know. */
   SONDO_MODEL_INPUT_USD_PER_MTOK: optionalNumber(z.number().min(0)),
   SONDO_MODEL_OUTPUT_USD_PER_MTOK: optionalNumber(z.number().min(0)),
+  /** "output" = native JSON-schema output; "tool" = via a forced tool call. Default by model. */
+  SONDO_STRUCTURED_MODE: z.preprocess((v) => (v === "" ? undefined : v), z.enum(["output", "tool"]).optional()),
 });
 
 export type ServerEnv = z.infer<typeof ServerEnvSchema>;

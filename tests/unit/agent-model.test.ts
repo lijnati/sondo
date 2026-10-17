@@ -31,7 +31,7 @@ const input = { stage: "plan" as const, instructions: "Return JSON.", prompt: "S
 describe("generateStructured", () => {
   it("returns schema-valid output and records tokens and estimated cost", async () => {
     const t = tracker();
-    const deps: ModelDeps = { model: textModel(JSON.stringify({ answer: "hi" }), usage(1000, 400, 300)), modelId: "openai/gpt-5-mini" };
+    const deps: ModelDeps = { model: textModel(JSON.stringify({ answer: "hi" }), usage(1000, 400, 300)), modelId: "openai/gpt-5-mini" }; // native mode by model id
     await expect(generateStructured(deps, t, input)).resolves.toEqual({ answer: "hi" });
     expect(t.usage).toMatchObject({ calls: 1, inputTokens: 1000, outputTokens: 400, reasoningTokens: 300, costSource: "price_table" });
     // 1000 × $0.25/M + 400 × $2/M
@@ -40,7 +40,7 @@ describe("generateStructured", () => {
 
   it("maps invalid JSON to a no_output error and still records the call", async () => {
     const t = tracker();
-    const err = await generateStructured({ model: textModel("{not json"), modelId: "m/x" }, t, input).catch((e: unknown) => e);
+    const err = await generateStructured({ model: textModel("{not json"), modelId: "m/x", structuredMode: "output" }, t, input).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(AgentModelError);
     expect((err as AgentModelError).kind).toBe("no_output");
     expect(t.usage.byStage[0]).toMatchObject({ stage: "plan", ok: false });
@@ -48,7 +48,7 @@ describe("generateStructured", () => {
 
   it("maps schema-mismatched JSON to no_output", async () => {
     const t = tracker();
-    const err = await generateStructured({ model: textModel(JSON.stringify({ wrong: 1 })), modelId: "m/x" }, t, input).catch((e: unknown) => e);
+    const err = await generateStructured({ model: textModel(JSON.stringify({ wrong: 1 })), modelId: "m/x", structuredMode: "output" }, t, input).catch((e: unknown) => e);
     expect((err as AgentModelError).kind).toBe("no_output");
   });
 
@@ -59,7 +59,7 @@ describe("generateStructured", () => {
         throw new APICallError({ message: `upstream rejected key ${secret}`, url: "https://gateway.example.test", requestBodyValues: {}, statusCode: 429, isRetryable: false });
       },
     });
-    const err = (await generateStructured({ model, modelId: "m/x", secrets: [secret] }, tracker(), input).catch((e: unknown) => e)) as AgentModelError;
+    const err = (await generateStructured({ model, modelId: "m/x", secrets: [secret], structuredMode: "output" }, tracker(), input).catch((e: unknown) => e)) as AgentModelError;
     expect(err.kind).toBe("provider");
     expect(err.message).toContain("429");
     expect(err.message).not.toContain(secret);
@@ -74,14 +74,14 @@ describe("generateStructured", () => {
       },
     });
     const t = tracker({ llmCalls: 1 });
-    await generateStructured({ model, modelId: "m/x" }, t, input);
-    const err = (await generateStructured({ model, modelId: "m/x" }, t, input).catch((e: unknown) => e)) as AgentModelError;
+    await generateStructured({ model, modelId: "m/x", structuredMode: "output" }, t, input);
+    const err = (await generateStructured({ model, modelId: "m/x", structuredMode: "output" }, t, input).catch((e: unknown) => e)) as AgentModelError;
     expect(err.kind).toBe("budget");
     expect(calls).toBe(1);
   });
 
   it("refuses a call whose worst-case cost would exceed the run limit", async () => {
-    const t = tracker({ runCostLimitUsd: 0.001 }); // strategize worst case: 8000 × $2/M = $0.016
+    const t = tracker({ runCostLimitUsd: 0.001 }); // strategize worst case: 12000 × $2/M = $0.024
     const err = (await generateStructured({ model: textModel("{}"), modelId: "openai/gpt-5-mini" }, t, { ...input, stage: "strategize" }).catch((e: unknown) => e)) as AgentModelError;
     expect(err.kind).toBe("budget");
     expect(err.message).toMatch(/run limit/);
@@ -89,7 +89,7 @@ describe("generateStructured", () => {
 
   it("does not block on cost for a $0 model", async () => {
     const t = tracker({ runCostLimitUsd: 0 }, priceFor("nvidia/nemotron-3.5-lightning-free"));
-    await expect(generateStructured({ model: textModel(JSON.stringify({ answer: "ok" })), modelId: "nvidia/nemotron-3.5-lightning-free" }, t, input)).resolves.toEqual({ answer: "ok" });
+    await expect(generateStructured({ model: textModel(JSON.stringify({ answer: "ok" })), modelId: "nvidia/nemotron-3.5-lightning-free", structuredMode: "output" }, t, input)).resolves.toEqual({ answer: "ok" });
     expect(t.usage.estimatedCostUsd).toBe(0);
   });
 
@@ -102,7 +102,7 @@ describe("generateStructured", () => {
           abortSignal?.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })), { once: true });
         }),
     });
-    const p = generateStructured({ model, modelId: "m/x" }, t, input).catch((e: unknown) => e);
+    const p = generateStructured({ model, modelId: "m/x", structuredMode: "output" }, t, input).catch((e: unknown) => e);
     setTimeout(() => ac.abort(new Error("User cancelled")), 5);
     const err = (await p) as AgentModelError;
     expect(err.kind).toBe("aborted");
@@ -125,6 +125,38 @@ describe("generateStructured", () => {
   });
 });
 
+describe("generateStructured via a forced tool call (models without native JSON output)", () => {
+  function toolModel(input: string | null) {
+    return new MockLanguageModelV4({
+      doGenerate: async (options) => {
+        expect(options.toolChoice).toEqual({ type: "tool", toolName: "answer" });
+        return {
+          content: input === null ? [{ type: "text", text: "sorry" }] : [{ type: "tool-call", toolCallId: "t1", toolName: "answer", input }],
+          finishReason: { unified: input === null ? "stop" : "tool-calls", raw: undefined },
+          usage: usage(),
+          warnings: [],
+        };
+      },
+    });
+  }
+
+  it("defaults to tool mode for models without known native support", async () => {
+    const out = await generateStructured({ model: toolModel(JSON.stringify({ answer: "via tool" })), modelId: "nvidia/nemotron-3.5-lightning-free" }, tracker(), input);
+    expect(out).toEqual({ answer: "via tool" });
+  });
+
+  it("maps a missing or invalid submission to no_output and records the call", async () => {
+    const t = tracker();
+    const e1 = (await generateStructured({ model: toolModel(null), modelId: "x/free" }, t, input).catch((e: unknown) => e)) as AgentModelError;
+    expect(e1.kind).toBe("no_output");
+    const e2 = (await generateStructured({ model: toolModel(JSON.stringify({ wrong: 1 })), modelId: "x/free" }, t, input).catch((e: unknown) => e)) as AgentModelError;
+    expect(e2.kind).toBe("no_output");
+    expect(t.usage.byStage.map((s) => s.ok)).toEqual([false, false]);
+    // The SDK's ToolChoiceViolationError carries no usage, so only the second call is counted.
+    expect(t.usage.inputTokens).toBe(100);
+  });
+});
+
 describe("proposeToolCalls", () => {
   it("returns the model's proposals without executing anything", async () => {
     const model = new MockLanguageModelV4({
@@ -142,7 +174,7 @@ describe("proposeToolCalls", () => {
       exploreCategory: tool({ description: "x", inputSchema: z.object({ category: z.string(), reason: z.string() }) }),
       stop: tool({ description: "y", inputSchema: z.object({ reason: z.string() }) }),
     };
-    const calls = await proposeToolCalls({ model, modelId: "m/x" }, tracker(), { stage: "adapt", instructions: "i", prompt: "p", tools });
+    const calls = await proposeToolCalls({ model, modelId: "m/x", structuredMode: "output" }, tracker(), { stage: "adapt", instructions: "i", prompt: "p", tools });
     expect(calls).toEqual([
       { toolName: "exploreCategory", input: { category: "podcast", reason: "weak" } },
       { toolName: "stop", input: { reason: "enough" } },
