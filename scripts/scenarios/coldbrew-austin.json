@@ -1,0 +1,14 @@
+{
+  "id": "coldbrew-austin",
+  "title": "Oat-milk cold brew launch · Austin (eval brief 1)",
+  "brief": "A fictional oat-milk cold brew brand launches in Austin for 25–34-year-olds. Cultural anchors: an indie artist, a TV show and an outdoor brand.",
+  "anchors": [
+    { "query": "Khruangbin", "type": "artist" },
+    { "query": "Ted Lasso", "type": "tv_show" },
+    { "query": "Yeti", "type": "brand" }
+  ],
+  "audience": { "ages": ["25_to_29", "30_to_34"] },
+  "location": "Austin",
+  "categories": ["artist", "podcast", "tv_show", "brand", "place", "movie"],
+  "notModeled": ["dairy-free preference", "coffee consumption habits"]
+}

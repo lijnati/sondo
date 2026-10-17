@@ -1,0 +1,1114 @@
+{
+  "generatedAt": "2026-10-17T07:01:06.619Z",
+  "host": "https://hackathon.api.qloo.com",
+  "calls": {
+    "made": 28,
+    "cached": 0,
+    "failed": 0,
+    "budget": 32
+  },
+  "latencyMs": {
+    "p50": 622,
+    "p90": 3298,
+    "max": 10558
+  },
+  "capabilities": [
+    {
+      "capability": "Entity search (/search)",
+      "grade": "verified",
+      "evidence": "Resolves brand and artist anchors; returns popularity and tags."
+    },
+    {
+      "capability": "Unknown-name handling",
+      "grade": "verified",
+      "evidence": "Nonsense queries return unrelated results; matchConfidence flags them as weak."
+    },
+    {
+      "capability": "Cross-category insights",
+      "grade": "verified",
+      "evidence": "7/7 categories non-empty for a brand signal."
+    },
+    {
+      "capability": "query.affinity on results",
+      "grade": "verified",
+      "evidence": "7/7 non-empty categories carry affinity on every item."
+    },
+    {
+      "capability": "Explainability",
+      "grade": "verified",
+      "evidence": "10/10 results carry per-input contributions."
+    },
+    {
+      "capability": "Age/gender signals shift ranking (G3)",
+      "grade": "verified",
+      "evidence": "Top-10 overlap with baseline: 20%, 40% (lower = stronger shift)."
+    },
+    {
+      "capability": "signal.location.query on non-place types (G4)",
+      "grade": "verified",
+      "evidence": "Location-only NYC vs LA overlap 40%; brand+location vs brand overlap 80%, 20%."
+    },
+    {
+      "capability": "Place results filtered by city",
+      "grade": "verified",
+      "evidence": "10 places returned for filter.location.query."
+    },
+    {
+      "capability": "Tag search (/v2/tags)",
+      "grade": "verified",
+      "evidence": "5 tags for a keyword query."
+    },
+    {
+      "capability": "Audiences (/v2/audiences + signal)",
+      "grade": "verified",
+      "evidence": "10 audience types; audience signal overlap with baseline 60%."
+    },
+    {
+      "capability": "Taste analysis (urn:tag)",
+      "grade": "verified",
+      "evidence": "10 tags with affinity."
+    },
+    {
+      "capability": "Demographic profile (urn:demographics)",
+      "grade": "verified",
+      "evidence": "6/6 age buckets and gender affinities (−1..1) returned."
+    },
+    {
+      "capability": "Compare (/v2/analysis/compare)",
+      "grade": "partial",
+      "evidence": "Returns items with query.score; scale undocumented → exploration only."
+    }
+  ],
+  "checks": [
+    {
+      "id": "search:brand",
+      "ok": true,
+      "callIds": [
+        "Q1"
+      ],
+      "resultCount": 2,
+      "metrics": {
+        "exactOrClose": 1
+      }
+    },
+    {
+      "id": "search:brand-peer",
+      "ok": true,
+      "callIds": [
+        "Q2"
+      ],
+      "resultCount": 3,
+      "metrics": {
+        "exactOrClose": 1
+      }
+    },
+    {
+      "id": "search:artist",
+      "ok": true,
+      "callIds": [
+        "Q3"
+      ],
+      "resultCount": 3,
+      "metrics": {
+        "exactOrClose": 1
+      }
+    },
+    {
+      "id": "search:podcast",
+      "ok": true,
+      "callIds": [
+        "Q4"
+      ],
+      "resultCount": 3,
+      "metrics": {
+        "exactOrClose": 1
+      }
+    },
+    {
+      "id": "search:nonsense",
+      "ok": true,
+      "callIds": [
+        "Q5"
+      ],
+      "resultCount": 3,
+      "metrics": {
+        "topMatchIsWeak": 1
+      }
+    },
+    {
+      "id": "insights:brand→artist",
+      "ok": true,
+      "callIds": [
+        "Q6"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9551,
+          "max": 0.9705,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.9483,
+          "max": 0.9986,
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "insights:brand→movie",
+      "ok": true,
+      "callIds": [
+        "Q7"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9074,
+          "max": 0.9617,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.5947,
+          "max": 0.9804,
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "insights:brand→tv_show",
+      "ok": true,
+      "callIds": [
+        "Q8"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": false,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9501,
+          "max": 0.9793,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.3092,
+          "max": 0.8536,
+          "n": 9
+        }
+      }
+    },
+    {
+      "id": "insights:brand→podcast",
+      "ok": true,
+      "callIds": [
+        "Q9"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.8974,
+          "max": 0.9731,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.7763,
+          "max": 0.9957,
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "insights:brand→book",
+      "ok": true,
+      "callIds": [
+        "Q10"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": false,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.8995,
+          "max": 0.9281,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.4589,
+          "max": 0.9681,
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "insights:brand→place",
+      "ok": true,
+      "callIds": [
+        "Q11"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9413,
+          "max": 0.9578,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.1083,
+          "max": 1,
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "insights:brand→brand",
+      "ok": true,
+      "callIds": [
+        "Q12"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9322,
+          "max": 0.9706,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.8169,
+          "max": 0.9972,
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "insights:explainability",
+      "ok": true,
+      "callIds": [
+        "Q13"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": true
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9358,
+          "max": 0.976,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.8794,
+          "max": 0.9972,
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "insights:age+gender→artist",
+      "ok": true,
+      "callIds": [
+        "Q14"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9503,
+          "max": 0.9621,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.8438,
+          "max": 0.9986,
+          "n": 10
+        }
+      },
+      "metrics": {
+        "overlapWithBaseline": 0.2
+      }
+    },
+    {
+      "id": "insights:age+gender→podcast",
+      "ok": true,
+      "callIds": [
+        "Q15"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.8722,
+          "max": 0.8936,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.9406,
+          "max": 0.9957,
+          "n": 10
+        }
+      },
+      "metrics": {
+        "overlapWithBaseline": 0.4
+      }
+    },
+    {
+      "id": "insights:location→artist",
+      "ok": true,
+      "callIds": [
+        "Q16"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9706,
+          "max": 0.9796,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.973,
+          "max": 0.9986,
+          "n": 10
+        }
+      },
+      "metrics": {
+        "overlapWithBaseline": 0.8
+      }
+    },
+    {
+      "id": "insights:location→podcast",
+      "ok": true,
+      "callIds": [
+        "Q17"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.903,
+          "max": 0.9337,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.9728,
+          "max": 0.9994,
+          "n": 10
+        }
+      },
+      "metrics": {
+        "overlapWithBaseline": 0.2
+      }
+    },
+    {
+      "id": "insights:location-only NYC→artist",
+      "ok": true,
+      "callIds": [
+        "Q18"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9999,
+          "max": 1,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.5193,
+          "max": 0.9999,
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "insights:location-only LA→artist",
+      "ok": true,
+      "callIds": [
+        "Q19"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9999,
+          "max": 1,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.099,
+          "max": 0.9997,
+          "n": 10
+        }
+      },
+      "metrics": {
+        "overlapWithNYC": 0.4
+      }
+    },
+    {
+      "id": "insights:place filter.location.query",
+      "ok": true,
+      "callIds": [
+        "Q20"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.905,
+          "max": 0.9199,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.2771,
+          "max": 1,
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "tags:search",
+      "ok": true,
+      "callIds": [
+        "Q21"
+      ],
+      "resultCount": 5
+    },
+    {
+      "id": "audiences:types",
+      "ok": true,
+      "callIds": [
+        "Q22"
+      ],
+      "resultCount": 10
+    },
+    {
+      "id": "audiences:search",
+      "ok": true,
+      "callIds": [
+        "Q23"
+      ],
+      "resultCount": 10
+    },
+    {
+      "id": "insights:audience→artist",
+      "ok": true,
+      "callIds": [
+        "Q24"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9555,
+          "max": 0.9639,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.9774,
+          "max": 0.9986,
+          "n": 10
+        }
+      },
+      "metrics": {
+        "overlapWithBaseline": 0.6
+      }
+    },
+    {
+      "id": "insights:urn:tag (taste)",
+      "ok": true,
+      "callIds": [
+        "Q25"
+      ],
+      "resultCount": 10,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": false,
+        "image": false,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9999,
+          "max": 1,
+          "n": 10
+        },
+        "popularity": {
+          "min": 0.9755,
+          "max": 1,
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "insights:urn:demographics",
+      "ok": true,
+      "callIds": [
+        "Q26"
+      ],
+      "resultCount": 1,
+      "metrics": {
+        "ageBuckets": 6,
+        "genderKeys": 2
+      }
+    },
+    {
+      "id": "analysis:compare",
+      "ok": true,
+      "callIds": [
+        "Q27"
+      ],
+      "resultCount": 25,
+      "ranges": {
+        "score": {
+          "min": 0.6392,
+          "max": 0.7307,
+          "n": 25
+        }
+      }
+    },
+    {
+      "id": "allowlist:drop place filter on artist",
+      "ok": true,
+      "callIds": [
+        "Q28"
+      ],
+      "resultCount": 3,
+      "fields": {
+        "affinity": true,
+        "popularity": true,
+        "tags": true,
+        "image": true,
+        "explainability": false
+      },
+      "ranges": {
+        "affinity": {
+          "min": 0.9654,
+          "max": 0.9705,
+          "n": 3
+        },
+        "popularity": {
+          "min": 0.9746,
+          "max": 0.996,
+          "n": 3
+        }
+      },
+      "dropped": [
+        "Dropped \"filter.location.query\": not supported on /v2/insights for urn:entity:artist"
+      ]
+    }
+  ],
+  "trace": [
+    {
+      "callId": "Q1",
+      "tool": "searchEntities",
+      "path": "/search",
+      "paramKeys": [
+        "query",
+        "take",
+        "types"
+      ],
+      "status": 200,
+      "latencyMs": 961,
+      "resultCount": 2,
+      "retry": 0
+    },
+    {
+      "callId": "Q2",
+      "tool": "searchEntities",
+      "path": "/search",
+      "paramKeys": [
+        "query",
+        "take",
+        "types"
+      ],
+      "status": 200,
+      "latencyMs": 205,
+      "resultCount": 3,
+      "retry": 0
+    },
+    {
+      "callId": "Q3",
+      "tool": "searchEntities",
+      "path": "/search",
+      "paramKeys": [
+        "query",
+        "take",
+        "types"
+      ],
+      "status": 200,
+      "latencyMs": 202,
+      "resultCount": 3,
+      "retry": 0
+    },
+    {
+      "callId": "Q4",
+      "tool": "searchEntities",
+      "path": "/search",
+      "paramKeys": [
+        "query",
+        "take",
+        "types"
+      ],
+      "status": 200,
+      "latencyMs": 216,
+      "resultCount": 3,
+      "retry": 0
+    },
+    {
+      "callId": "Q5",
+      "tool": "searchEntities",
+      "path": "/search",
+      "paramKeys": [
+        "query",
+        "take",
+        "types"
+      ],
+      "status": 200,
+      "latencyMs": 235,
+      "resultCount": 3,
+      "retry": 0
+    },
+    {
+      "callId": "Q6",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:artist",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 3282,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q7",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:movie",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 1438,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q8",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:tv_show",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 622,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q9",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:podcast",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 511,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q10",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:book",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 666,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q11",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:place",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 1415,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q12",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:brand",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 327,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q13",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:brand",
+      "paramKeys": [
+        "feature.explainability",
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 327,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q14",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:artist",
+      "paramKeys": [
+        "filter.type",
+        "signal.demographics.age",
+        "signal.demographics.gender",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 1430,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q15",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:podcast",
+      "paramKeys": [
+        "filter.type",
+        "signal.demographics.age",
+        "signal.demographics.gender",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 759,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q16",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:artist",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "signal.location.query",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 811,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q17",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:podcast",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "signal.location.query",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 288,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q18",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:artist",
+      "paramKeys": [
+        "filter.type",
+        "signal.location.query",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 642,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q19",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:artist",
+      "paramKeys": [
+        "filter.type",
+        "signal.location.query",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 811,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q20",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:place",
+      "paramKeys": [
+        "filter.location.query",
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 10558,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q21",
+      "tool": "searchTags",
+      "path": "/v2/tags",
+      "paramKeys": [
+        "filter.query",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 186,
+      "resultCount": 5,
+      "retry": 0
+    },
+    {
+      "callId": "Q22",
+      "tool": "listAudienceTypes",
+      "path": "/v2/audiences/types",
+      "paramKeys": [
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 181,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q23",
+      "tool": "searchAudiences",
+      "path": "/v2/audiences",
+      "paramKeys": [
+        "filter.audience.types",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 186,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q24",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:artist",
+      "paramKeys": [
+        "filter.type",
+        "signal.demographics.audiences",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 3769,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q25",
+      "tool": "tasteAnalysis",
+      "path": "/v2/insights",
+      "filterType": "urn:tag",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 491,
+      "resultCount": 10,
+      "retry": 0
+    },
+    {
+      "callId": "Q26",
+      "tool": "demographics",
+      "path": "/v2/insights",
+      "filterType": "urn:demographics",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities"
+      ],
+      "status": 200,
+      "latencyMs": 213,
+      "resultCount": 1,
+      "retry": 0
+    },
+    {
+      "callId": "Q27",
+      "tool": "compare",
+      "path": "/v2/analysis/compare",
+      "paramKeys": [
+        "a.signal.interests.entities",
+        "b.signal.interests.entities"
+      ],
+      "status": 200,
+      "latencyMs": 566,
+      "resultCount": 25,
+      "retry": 0
+    },
+    {
+      "callId": "Q28",
+      "tool": "insights",
+      "path": "/v2/insights",
+      "filterType": "urn:entity:artist",
+      "paramKeys": [
+        "filter.type",
+        "signal.interests.entities",
+        "take"
+      ],
+      "status": 200,
+      "latencyMs": 3298,
+      "resultCount": 3,
+      "retry": 0
+    }
+  ],
+  "disclaimer": "Sanitized: no API key, entity names, entity IDs or raw Qloo payloads. Safe to commit."
+}

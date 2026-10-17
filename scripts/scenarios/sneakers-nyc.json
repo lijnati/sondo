@@ -1,0 +1,13 @@
+{
+  "id": "sneakers-nyc",
+  "title": "Sustainable sneaker brand · culturally engaged consumers in New York",
+  "brief": "A fictional sustainable sneaker brand wants to understand culturally engaged 25–34-year-olds in New York.",
+  "anchors": [
+    { "query": "Allbirds", "type": "brand" },
+    { "query": "Veja", "type": "brand" }
+  ],
+  "audience": { "ages": ["25_to_29", "30_to_34"] },
+  "location": "New York City",
+  "categories": ["artist", "podcast", "tv_show", "movie", "brand", "place"],
+  "notModeled": ["'culturally engaged' (no verified Qloo audience selected)", "sustainability values (only via anchors)", "income"]
+}

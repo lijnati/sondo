@@ -1,0 +1,13 @@
+{
+  "id": "hotel-lisbon",
+  "title": "Boutique hotel market entry · Lisbon (eval brief 2)",
+  "brief": "A fictional design-led boutique hotel enters Lisbon, targeting 35–44-year-old travellers.",
+  "anchors": [
+    { "query": "Ace Hotel", "type": "brand" },
+    { "query": "Monocle", "type": "brand" }
+  ],
+  "audience": { "ages": ["35_to_44"] },
+  "location": "Lisbon",
+  "categories": ["place", "artist", "podcast", "book", "movie", "brand"],
+  "notModeled": ["travel frequency", "income", "design sensibility (only via anchors)"]
+}
