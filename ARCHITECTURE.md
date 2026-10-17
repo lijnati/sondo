@@ -23,19 +23,18 @@ Run Orchestrator (Node runtime, Fluid Compute, maxDuration 300s)
 
 | # | Node | Kind | Input → Output | Qloo calls | LLM calls |
 |---|---|---|---|---|---|
-| 0 | `validateBrief` | code (Zod) | `BriefInput` → `Brief` | 0 | 0 |
-| 1 | `planResearch` | **LLM** (structured) | `Brief` → `ResearchPlan` (draft) → code clamps it to allowlists | 0 | 1 |
-| 2 | `resolve` | code tools | names → `ResolvedRef[]` (entities, tags, audiences, locality) | ≤ 10 | 0 |
-| 3 | `explore` | code (parallel, concurrency 4) | per category: **target** query + **baseline** query | ≤ 14 | 0 |
-| 4 | `deepen` | **LLM** tool loop (1 round, ≤ 4 tool calls) | ledger digest → follow-up queries (bridges, taste tags, compare, explain) | ≤ 8 | 1 |
-| 5 | `normalize` | code | raw responses → `EvidenceItem[]` (ledger) | 0 | 0 |
-| 6 | `critique` | code | ledger → `Critique` (coverage, flags, lift, distinctiveness) | 0 | 0 |
-| 7 | `strategize` | **LLM** (structured) | brief + critique + ledger digest → `StrategySet` | 0 | 1 |
-| 8 | `validateClaims` | code | `StrategySet` × ledger → `ValidationReport` | 0 | 0 |
-| 9 | `repair` | **LLM** (only if 8 fails) | violations → corrected `StrategySet`. Revalidate. Still failing → drop the claims. | 0 | ≤ 2 |
-| 10 | `assembleReport` | code | → `Report`. Persisted. Numbers rendered from the ledger. | 0 | 0 |
+| 0 | `validateBrief` | code (Zod) | brief JSON → `Brief` (`lib/agent/brief.ts`) | 0 | 0 |
+| 1 | `planResearch` | **LLM** (structured) | `Brief` → `ResearchPlanDraft` → **code clamp** (`plan.ts`: brief ages/gender/market win, categories ≤ 5, anchors only from the brief). On model failure → deterministic fallback plan. | 0 | 1 |
+| 2 | `resolve` | code | brand + anchors + peers (≤ 6) → trusted `ResolvedRef`s (exact/close only). Typed anchor misses retry once across the plan's alternate types (decision round 0). | ≤ 6 (+ retries) | 0 |
+| 3 | `explore` | code (parallel) | per category: **target** (anchors + ages/gender + market) and **baseline** (anchors + market); taste themes; anchor demographics | ≤ 12 | 0 |
+| 4 | `deepen` | **adaptive** (`adapt.ts`) | Round 1: the **model proposes tool calls** (`exploreCategory`, `nicheLens`, `bridge`, `tasteThemes`, `stop`; tools have no `execute`). Round 2: **rules** on the updated critique. The dispatcher validates every proposal before running it. | remainder | 1 |
+| 5 | `critique` | code (`critique.ts`) | ledger → findings (`F#`, with `E#`) + flags + sufficiency | 0 | 0 |
+| 6 | `strategize` | **LLM** (structured) | brief + findings + ledger digest → `StrategyOutput` (opportunities + 3 concepts) | 0 | 1 |
+| 7 | `validateClaims` | code (`validate.ts`) | `checkStrategy` → violations | 0 | 0 |
+| 8 | `repair` | **LLM** (only if 7 finds repairable violations) | one call; then `finalizeStrategy` applies deterministic fixes | 0 | ≤ 1 |
+| 9 | assemble | code | → `AgentRunResult` (status completed / partial / failed / cancelled) | 0 | 0 |
 
-**Hard limits per run:** Qloo ≤ **40** calls (cache hits are free); LLM ≤ **6** calls; total LLM output ≤ ~12k tokens; wall clock **150 s soft** (skip `deepen` and optional calls) and **240 s hard** (abort and return a partial report).
+**Hard limits per run (Phase 2, `lib/agent/budget.ts`):** Qloo ≤ **24** calls (cache hits are free); LLM ≤ **4** calls (plan, adapt, strategize, repair, in that priority; the adaptive model round runs only if two calls remain); ≤ **2** adaptive rounds with ≤ 4 actions each; per-stage `maxOutputTokens` (reasoning tokens count); 60 s per model call; **120 s soft** (skip adaptive research) and **180 s hard** (abort everything via one shared AbortSignal and return a partial result); estimated run cost ≤ `SONDO_RUN_COST_LIMIT_USD` (default $0.15; an estimate, not a billing cap).
 
 **Concurrency and pacing:** at most 3 concurrent Qloo requests, with request starts spaced ≥ 250 ms apart. The original plan said 4, but live runs hit 429s without spacing (QLOO_RESEARCH.md §10).
 
@@ -194,6 +193,8 @@ Prompting rules:
 - Each strategy must use a distinct primary category mix.
 
 ## 6. `deepen` node (bounded agency)
+
+> **Phase 2 implementation:** see `lib/agent/adapt.ts`. The menu below was implemented as `exploreCategory`, `nicheLens`, `bridge`, `tasteThemes` and `stop`; `explain` and `compareWithPeer` were not, because the compare score is undocumented (QLOO_RESEARCH.md §10). Proposals are recorded as `Decision`s (proposedBy model or rule; outcome executed, rejected or skipped, with a reason).
 The LLM receives the ledger digest and the critique flags, for example "podcast category empty", "top artists are all mainstream", "strong brand→place signal in Austin". It may call **at most 4 tools in one step** from this menu:
 - `bridge(evidenceId, targetType)`: use a discovered entity as the seed in another category.
 - `nicheLens(category)`: re-query with `popularityMax: 0.6`.
@@ -212,6 +213,8 @@ Tool arguments are evidence IDs or enums only. Code resolves them to Qloo IDs. E
 5. Cross-strategy partner overlap > 30%.
 6. Free text containing a forbidden pattern: `/\b(\d{1,3}\s?%|percent|ROI|conversion|will buy|guarantee|proven|purchase intent)\b/i`, or any digit run other than a 4-digit year.
 7. A ledger entity name appearing in free text but not cited in that claim. This produces a warning and an auto-attach of the citation, or a fail if ambiguous.
+
+**Phase 2 implementation** (`lib/agent/validate.ts`): rule 6 is negation-aware ("affinity is not purchase intent" is allowed; asserted performance claims are not), and magnitude words (million, thousand) also count as numbers. Digits inside cited entity names are allowed. Concepts also need three distinct angles, ≥ 3 distinct `E#` across ≥ 2 categories to count as `grounded`, and ≤ 30% cited-entity overlap (Jaccard on Qloo entity ids, so the same entity cited via different `E#` still counts).
 
 Outcome: if it passes, assemble. If it fails, run `repair` once with the violation list. If it fails again, drop the offending claims or partners. If a strategy then falls below the minimum, show it as "insufficient evidence" instead of padding it. **The report never shows an unvalidated claim.**
 
@@ -275,7 +278,7 @@ Rate limits: ≤ 5 new runs per IP-hash per day and a global daily cap (env var)
 | shadcn/ui | ✅ **selectively** | Primitives only (Dialog/Sheet, Tabs, Tooltip, Popover, Form inputs), fully restyled. No stock dashboard blocks. |
 | Geist Sans + Geist Mono | ✅ | Matches the Neo-Swiss/Vercel direction. Mono for IDs and the trace. |
 | Vercel AI SDK (v7) + AI Gateway | ✅ | Structured outputs, tool calling and provider fallback. **AI SDK 7 APIs must be checked against `node_modules/ai/docs` in Phase 1**, not from memory. |
-| Model | Default `anthropic/claude-sonnet-5-5` via the Gateway for plan, deepen and strategy. `claude-haiku-5-5` is optional for repair. | Strong structured output and reasoning. Decision for the user (cost and provider). |
+| Model | `SONDO_MODEL`, default `nvidia/nemotron-3.5-lightning-free` ($0, user decision 2026-10-17) via the AI Gateway. Any gateway model works; `openai/gpt-5-mini` is priced in the table. | Every stage has a deterministic fallback, so a weaker free model degrades output quality, not correctness. |
 | Zod | ✅ | Single source for runtime validation and LLM schemas |
 | Neon Postgres | ✅ minimal | See §10 |
 | Vitest | ✅ | Unit tests: param builder, normalize, lift, validator, budget guard |

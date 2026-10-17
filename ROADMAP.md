@@ -8,7 +8,7 @@ Order of investment: **Qloo integration → agent → app plumbing → design �
 | 0 | Oct 15–17 | Research, feasibility, architecture | 7 docs plus a runnable spike ✅. Live spike passed G1–G2 on Oct 17 ✅. |
 | 1 | Oct 17 | Foundations: app shell | Scaffold, design system, marketing and product shells, env validation, test tooling. Lint, typecheck, test and build green. |
 | 1b | Oct 17 | Qloo data layer | Typed Qloo tools tested ✅. Live probe: 12/13 capabilities verified ✅. Neon deferred to Phase 3 (not needed yet). Public repo and deploy await approval. |
-| 2 | Oct 19–21 | Agent workflow | 5 eval briefs produce validated reports via the CLI within budget |
+| 2 | Oct 17– | Agent workflow | Agent engine built and tested (mock model) ✅. Live Qloo-side runs on 3 briefs ✅. **Live model runs blocked: `AI_GATEWAY_API_KEY` not set.** |
 | 3 | Oct 22–24 | App integration | End-to-end in production: brief → live stream → persisted report permalink |
 | 4 | Oct 24–27 | Product design and UX | All pages and states designed. Featured reports look launch-ready. |
 | 5 | Oct 27–28 | Hardening and verification | E2E green. Failure injection handled. Quota protections verified. |
