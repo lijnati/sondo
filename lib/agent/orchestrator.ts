@@ -31,7 +31,7 @@ import {
   type ValidationSummary,
 } from "./schemas";
 import type { RunEvent } from "./types";
-import { checkStrategy, describeViolations, finalizeStrategy, type Violation } from "./validate";
+import { ageBounds, checkStrategy, describeViolations, finalizeStrategy, type Violation } from "./validate";
 
 export interface AgentDeps {
   /** Builds the run's Qloo client with the given call budget and trace sink. */
@@ -162,24 +162,40 @@ export async function runAgent(briefInput: unknown, deps: AgentDeps, opts: RunOp
     } else if (tracker.llmCallsLeft() < 1) {
       warnings.push("Model call budget exhausted before strategy; returning research only.");
     } else {
-      const ctx = { ledger: session.ledger, findingIds: new Set(crit.findings.map((f) => f.id)), requireThree: crit.sufficient };
+      const ctx = { ledger: session.ledger, findingIds: new Set(crit.findings.map((f) => f.id)), requireThree: crit.sufficient, allowedNumbers: ageBounds(state.plan.ages) };
       const digest = ledgerDigest(session.ledger);
       const findings = findingsDigest(crit.findings);
+      const strategize = (evidence: string) =>
+        generateStructured(deps.model, tracker, {
+          stage: "strategize",
+          instructions: STRATEGIZE_INSTRUCTIONS,
+          prompt: strategizePrompt({ brief, plan: state.plan, findings, digest: evidence, notModeled: state.plan.notModeled }),
+          schema: StrategyOutput,
+          name: "campaign_strategy",
+        });
       const draft = await stage("strategize", async () => {
         try {
-          const out = await generateStructured(deps.model, tracker, {
-            stage: "strategize",
-            instructions: STRATEGIZE_INSTRUCTIONS,
-            prompt: strategizePrompt({ brief, plan: state.plan, findings, digest, notModeled: state.plan.notModeled }),
-            schema: StrategyOutput,
-            name: "campaign_strategy",
-          });
+          const out = await strategize(digest);
           llmEvent();
           return out;
         } catch (err) {
           llmEvent();
           if (err instanceof AgentModelError && err.kind === "aborted") throw err;
-          warnings.push(`Strategy model call failed (${err instanceof AgentModelError ? `${err.kind}: ${err.message}` : "error"}); returning research only.`);
+          const why = err instanceof AgentModelError ? `${err.kind}: ${err.message}` : "error";
+          // A strategy is worth more than a repair: spend the repair call on one retry
+          // with a compact evidence digest (live: the free model sometimes fails to submit).
+          if (err instanceof AgentModelError && err.kind === "no_output" && tracker.llmCallsLeft() >= 1) {
+            warnings.push(`Strategy model call failed (${why}); retried once with a compact evidence digest.`);
+            try {
+              const out = await strategize(ledgerDigest(session.ledger, { perCategory: 5, max: 50 }));
+              llmEvent();
+              return out;
+            } catch (retryErr) {
+              llmEvent();
+              if (retryErr instanceof AgentModelError && retryErr.kind === "aborted") throw retryErr;
+            }
+          }
+          warnings.push(`Strategy model call failed (${why}); returning research only.`);
           return null;
         }
       });
@@ -238,7 +254,7 @@ export async function runAgent(briefInput: unknown, deps: AgentDeps, opts: RunOp
     ? "cancelled"
     : failure && session.ledger.size === 0
       ? "failed"
-      : !deadline && !failure && concepts.length === 3 && concepts.every((c) => c.grounding !== "insufficient_evidence") && crit?.sufficient
+      : !deadline && !failure && concepts.length === 3 && concepts.every((c) => c.grounding === "grounded") && crit?.sufficient
         ? "completed"
         : "partial";
 

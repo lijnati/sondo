@@ -110,6 +110,14 @@ describe("agent run: adaptive behavior depends on evidence", () => {
     expect(retry?.outcomeReason).toMatch(/Resolved as tv_show "Fixture Show"/);
   });
 
+  it("never retries an anchor into place/destination, even when the plan suggests it", async () => {
+    const plan = { anchors: [{ name: "Fixture Show", type: "brand", alternateTypes: ["place", "destination"] }], peerBrands: [], ages: ["25_to_29"], gender: null, categories: ["artist", "podcast", "tv_show"], researchQuestions: ["q"], notModeled: [], rationale: "r" };
+    const { result, qlooCalls } = await run({ plan }, {}, {}, { ...brief, anchors: [{ name: "Fixture Show", type: "brand" }] });
+    expect(result.decisions.find((x) => x.action.tool === "retryAnchor")).toMatchObject({ outcome: "skipped" });
+    expect(qlooCalls.filter((u) => u.pathname === "/search" && u.searchParams.get("query") === "Fixture Show")).toHaveLength(1);
+    expect(result.warnings.join(" ")).toMatch(/Did not retry "Fixture Show" as a place/);
+  });
+
   it("does not guess across every category when no alternate types were planned", async () => {
     const { result, qlooCalls } = await run({ plan: "invalid" }, {}, {}, { ...brief, anchors: [{ name: "Fixture Show", type: "brand" }] });
     expect(result.decisions.find((x) => x.action.tool === "retryAnchor")).toMatchObject({ outcome: "skipped" });
@@ -199,6 +207,14 @@ describe("agent run: failures, budgets and cancellation", () => {
     expect(result.plan?.source).toBe("fallback");
     expect(result.warnings.join(" ")).toMatch(/Planning model call failed \(no_output/);
     expect(result.concepts).toHaveLength(3);
+  });
+
+  it("retries the strategy once with a compact digest when the model does not submit", async () => {
+    const { result, seen } = await run({ noSubmitOnce: ["strategize"] });
+    expect(seen.filter((x) => x.stage === "strategize")).toHaveLength(2);
+    expect(result.concepts).toHaveLength(3);
+    expect(result.warnings.join(" ")).toMatch(/retried once with a compact evidence digest/);
+    expect(result.usage.llm.calls).toBeLessThanOrEqual(4);
   });
 
   it("returns research only (partial) when the strategy model fails", async () => {

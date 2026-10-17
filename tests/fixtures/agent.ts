@@ -112,12 +112,15 @@ export interface ModelScript {
   repair?: object | ((prompt: string) => unknown);
   /** Throw a provider-style error for these stages. */
   failStages?: Stage[];
+  /** On the first call of these stages, answer in prose instead of submitting the tool (live free-model behavior). */
+  noSubmitOnce?: Stage[];
 }
 
 const usage = { inputTokens: { total: 500, noCache: 500, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 300, text: 300, reasoning: undefined } };
 
-function stageOf(system: string, hasTools: boolean): Stage {
-  if (hasTools) return "adapt";
+function stageOf(system: string, toolNames: string[]): Stage {
+  // Structured output via a forced tool call ("tool" mode) uses one schema-named tool.
+  if (toolNames.length && !toolNames.includes("research_plan") && !toolNames.includes("campaign_strategy")) return "adapt";
   if (system.includes("research planner")) return "plan";
   if (system.includes("fixing a campaign strategy")) return "repair";
   return "strategize";
@@ -125,6 +128,7 @@ function stageOf(system: string, hasTools: boolean): Stage {
 
 export function scriptedModel(script: ModelScript) {
   const seen: { stage: Stage; prompt: string }[] = [];
+  const skipped = new Set<Stage>();
   const model = new MockLanguageModelV4({
     doGenerate: async (options) => {
       const system = options.prompt.filter((m) => m.role === "system").map((m) => (typeof m.content === "string" ? m.content : "")).join("\n");
@@ -133,7 +137,8 @@ export function scriptedModel(script: ModelScript) {
         .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
         .map((p) => (p.type === "text" ? p.text : ""))
         .join("\n");
-      const stage = stageOf(system, Boolean(options.tools?.length));
+      const toolNames = (options.tools ?? []).map((t) => t.name);
+      const stage = stageOf(system, toolNames);
       seen.push({ stage, prompt: user });
       if (script.failStages?.includes(stage)) {
         const { APICallError } = await import("ai");
@@ -151,6 +156,19 @@ export function scriptedModel(script: ModelScript) {
       const value = script[stage];
       const resolved = typeof value === "function" ? (value as (p: string) => unknown)(user) : value;
       const text = resolved === "invalid" ? "{ not valid json" : JSON.stringify(resolved ?? defaultFor(stage, user));
+      const schemaTool = toolNames.find((n) => n === "research_plan" || n === "campaign_strategy");
+      if (schemaTool && script.noSubmitOnce?.includes(stage) && !skipped.has(stage)) {
+        skipped.add(stage);
+        return { content: [{ type: "text" as const, text: "Here is my strategy in prose..." }], finishReason: { unified: "stop" as const, raw: undefined }, usage, warnings: [] };
+      }
+      if (schemaTool) {
+        return {
+          content: [{ type: "tool-call" as const, toolCallId: "structured-0", toolName: schemaTool, input: text }],
+          finishReason: { unified: "tool-calls" as const, raw: undefined },
+          usage,
+          warnings: [],
+        };
+      }
       return { content: [{ type: "text" as const, text }], finishReason: { unified: "stop" as const, raw: undefined }, usage, warnings: [] };
     },
   });

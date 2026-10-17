@@ -35,7 +35,7 @@ export const DEFAULT_AGENT_BUDGET: AgentBudget = {
   hardDeadlineMs: 180_000,
   llmTimeoutMs: 60_000,
   runCostLimitUsd: 0.15,
-  maxOutputTokens: { plan: 3_000, adapt: 2_000, strategize: 8_000, repair: 8_000 },
+  maxOutputTokens: { plan: 3_000, adapt: 2_000, strategize: 12_000, repair: 12_000 },
 };
 
 /** USD per million tokens. Source: AI Gateway catalogue (fetched 2026-10-17). */

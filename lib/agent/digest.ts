@@ -18,6 +18,14 @@ export function sanitizeName(s: string, max = 60): string {
   return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned;
 }
 
+/** Plain words, so the model does not echo internal labels like "mainstream_fit" into copy. */
+const QUADRANT_WORDS = {
+  mainstream_fit: "strong fit, mainstream",
+  distinctive_fit: "strong fit, less mainstream",
+  weak_mainstream: "weaker fit, mainstream",
+  long_tail: "weaker fit, less mainstream",
+} as const;
+
 const fmt = (n: number | undefined, d = 2) => (n === undefined ? "n/a" : n.toFixed(d));
 
 function line(it: EvidenceItem): string {
@@ -30,7 +38,7 @@ function line(it: EvidenceItem): string {
     `rank ${it.rank}/${it.of}`,
     `pop ${fmt(it.popularity)}`,
     lift,
-    it.derived?.quadrant ? it.derived.quadrant : "",
+    it.derived?.quadrant ? QUADRANT_WORDS[it.derived.quadrant] : "",
     it.query.variant === "deepen" ? "follow-up" : "",
     it.entity.tags.length ? `tags: ${it.entity.tags.slice(0, 3).map((t) => sanitizeName(t.name, 30)).join(", ")}` : "",
   ];

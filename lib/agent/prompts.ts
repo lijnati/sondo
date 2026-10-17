@@ -67,6 +67,7 @@ export const STRATEGIZE_INSTRUCTIONS = [
   "Write exactly three campaign concepts with three different angles: mainstream_anchor (broad, high-affinity signals), distinctive_niche (strong-fit, less mainstream signals), cross_category_bridge (connections across categories). The three must differ in cultural angle, target interest and activation, and should cite mostly different evidence.",
   "Every claim of kind \"evidence\" must cite one to six E# ids from the evidence block that directly support it. If something is your strategic judgement, mark it kind \"hypothesis\". Each concept should cite at least three different E# across at least two categories. Every partnership or placement idea must cite the E# of the partner or venue. Only name entities that appear in the evidence, and cite them.",
   "Opportunities summarize the most promising openings and reference finding ids (F#) and evidence.",
+  "Write for marketers: never copy internal labels, ids or field names (such as rank, pop, lift or quadrant wording) into the copy; cite E# instead.",
   "Channels are activation channels (e.g. podcast sponsorship, creator collaboration, pop-up event). Assumptions and risks must be honest; note that affinity is not purchase intent where relevant.",
   HONESTY,
   DATA_RULE,
