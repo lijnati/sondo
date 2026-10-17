@@ -1,6 +1,6 @@
 # QLOO_RESEARCH.md — Capabilities, endpoints, constraints, feasibility
 
-Status as of **2026-10-17**. The live spike ran on 2026-10-17 (30 requests; results in §9). Sections 1–8 still describe what is *documented*; §9 records what was *observed*. Where they differ, §9 wins.
+Status as of **2026-10-17**. Live evidence comes from the spike (§9, 30 requests) and the Phase 1b capability probe and exploration runs (§10, about 120 requests through the real data layer). Sections 1–8 describe what is *documented*; §9–10 record what was *observed*. **Where they differ, §10 wins.**
 
 **Legend**
 - 📄 Documented in an official source
@@ -148,12 +148,12 @@ From [DP] `interpreting-affinity-scores.md`, `affinity-score-methodology.md` and
 | Check ID | Question answered | Result |
 |---|---|---|
 | `search:*` | Host and auth work. Brand resolution quality. What `/search` returns for an unknown brand. | 🧪 200 for all. Brands and artists resolve with `popularity` and `tags`. **An unknown brand returns unrelated popular brands, not 404**, so resolution needs a match-confidence check. |
-| `tags:outdoor`, `audiences:*` | Tag and audience lookup availability and shape | 🧪 `/v2/tags` 200 (5 results). `/v2/audiences` search 200 (5 results). `/v2/audiences/types` 200, but the result count wasn't parsed (shape differs, ❓). |
+| `tags:outdoor`, `audiences:*` | Tag and audience lookup availability and shape | 🧪 `/v2/tags` 200 (5 results). `/v2/audiences` search 200 (5 results). `/v2/audiences/types` 200. **Corrected in Phase 1b:** the shape is `results.audience_types[] {type, parents[]}` (10 types). |
 | `insights:brand→{artist,movie,tv_show,podcast,place,book}` | Cross-category coverage, empties, **`query.affinity` presence and scale** | 🧪 All 6 types returned 10 results. **`query.affinity` is present on every result** (observed 0.90–0.98, clustered). `popularity` is present. `query.measurements.audience_growth` is present on most types and often 0. Book results have no tags. |
 | `insights:explainability` | `query.explainability` shape | 🧪 200. `query.explainability` is present per result and at the top level (`$.query.explainability`). |
 | `insights:demographics-signal`, `insights:audience-signal` | Demographic and audience signals change results | 🧪 200. The top-3 artists changed completely compared with the brand-only query. One comparison only, so it's suggestive, not measured. |
 | `insights:signal.location.query`, `insights:filter.location.query`, `insights:location-only` | Location works for non-place types, or is silently ignored | 🧪 All 200 and all echo `query` at the top level. `signal.location.query` on artist only **reordered** the top 3 (weak effect). Location-only artist queries return locally relevant results (affinity ≈ 1.0). `filter.location.query` (place) returns local places. |
-| `insights:urn:tag`, `insights:urn:demographics` | Taste analysis and demographics allowed on the hackathon host | 🧪 `urn:tag` 200 (10 tags with `query.affinity`). `urn:demographics` 200 but 1 result with no recognized fields (❓ shape, feature-detect). |
+| `insights:urn:tag`, `insights:urn:demographics` | Taste analysis and demographics allowed on the hackathon host | 🧪 `urn:tag` 200 (10 tags with `query.affinity`). `urn:demographics` 200. **Corrected in Phase 1b:** the spike checked the wrong keys. The shape is `results.demographics[] {entity_id, query.age.<6 buckets>, query.gender.{male,female}}`, so it **works** (see §10). |
 | `analysis:compare` | Compare availability and shape | 🧪 200, 24 results (tag-like). Shape still to map in Phase 1b. |
 | `type-spelling:*` | `video_game` vs `videogame` | 🧪 **`urn:entity:videogame` works. `urn:entity:video_game` → 400** ("not supported for filter.type"). Note: 400, not the documented 403. |
 | `failure:*` | Documented error and silent-ignore behavior | 🧪 An invalid tag returns **200 with 20 results** (silently ignored, not the documented 400). An unsupported param returns 200 (silently ignored). |
@@ -167,6 +167,41 @@ From [DP] `interpreting-affinity-scores.md`, `affinity-score-methodology.md` and
 5. **G5 (nice):** `urn:tag`, `urn:demographics`, compare and audiences are available.
 6. p90 latency under 3 s, so a 30–40 call run fits in under 60 s with concurrency 4.
 
-**Gate outcomes (2026-10-17):** G1 ✅ pass · G2 ✅ pass (`query.affinity` + `popularity`) · G3 🟡 likely (single comparison; confirm with eval briefs) · G4 🟡 weak for non-place types (scope location claims to place/destination plus location-only queries) · G5 🟡 partial (`urn:tag`, compare, audiences, tags OK; `urn:demographics` shape unknown) · latency ✅ p90 1.6 s.
+**Gate outcomes (2026-10-17):** G1 ✅ pass · G2 ✅ pass (`query.affinity` + `popularity`) · G3 🟡 likely (single comparison; confirm with eval briefs) · G4 🟡 weak for non-place types (scope location claims to place/destination plus location-only queries) · G5 🟡 partial (`urn:tag`, compare, audiences, tags OK; `urn:demographics` later confirmed in §10) · latency ✅ p90 1.6 s.
 
-**Design implications:** affinity values cluster tightly, so the UI leads with rank within a query, not raw affinity. Never trust a 200 as proof a param was applied. Brand resolution needs `matchConfidence` because search never returns empty for nonsense.
+**Superseded by §10 for G3, G4 and G5.** **Design implications:** affinity values cluster tightly, so the UI leads with rank within a query, not raw affinity. Never trust a 200 as proof a param was applied. Brand resolution needs `matchConfidence` because search never returns empty for nonsense.
+
+## 10. Verified capability matrix (Phase 1b, 2026-10-17)
+
+Source: `pnpm probe` (28 live calls through `lib/qloo/*`, sanitized output in `scripts/output/probe-summary.json`) and `pnpm explore` on 3 scenarios (17–20 calls each). Legend: 🧪 verified live · 🟡 partial · ❌ unavailable.
+
+| Capability | Status | Observation | Sondo usage |
+|---|---|---|---|
+| `/search` entity resolution | 🧪 | Brands, artists and podcasts resolve exactly. A nonsense query returns 3 unrelated results (never 404 in practice). An unknown-but-real name (e.g. a magazine searched as `brand`) returns nothing trusted. | `searchEntities`. Only `exact`/`close` matches are used as anchors. |
+| Cross-category `/v2/insights` | 🧪 | 7 of 7 tested types returned 10 results for a brand signal (artist, movie, tv_show, podcast, book, place, brand). | `insights()` |
+| `query.affinity` | 🧪 | Present on every result in every category. Clustered tightly within a query (e.g. 0.948–0.954). | Copied verbatim. The UI leads with rank. |
+| `popularity` | 🧪 | Present on almost all results; some TV items lack it. Most lists sit at 0.95–1.0. | Copied verbatim; missing stays missing. |
+| `feature.explainability` | 🧪 | 10 of 10 results carry `query.explainability.signal.interests.entities[] {entity_id, score}`. **Not in the per-type doc matrix.** | Mapped to refs in `EvidenceItem.explainability`. |
+| Age/gender signals (G3) | 🧪 | Top-10 overlap with the brand-only baseline was 20% (artist) and 40% (podcast). | Audience lift is meaningful. |
+| `signal.location.query` on non-place types (G4) | 🧪 | Location-only artist lists differ by city (NYC vs LA overlap 40%). Brand + location vs brand: podcast overlap 20%, artist overlap 80% (weaker). **Not in the per-type doc matrix.** | Allowed via the live-verified allowlist. Claims stay rank-based. |
+| `filter.location.query` (place) | 🧪 | Returns local places. "New York" can resolve to the state (a Poughkeepsie hotel appeared); "New York City" stayed in the city. | Place categories use it. Briefs should name the city precisely. |
+| `/v2/tags` | 🧪 | `results.tags[] {id, name, type, parents[]}` | `searchTags` |
+| `/v2/audiences`, `/v2/audiences/types` | 🧪 | 10 audience types. An audience signal shifted the artist top-10 (60% overlap with baseline). | `searchAudiences`. Audience IDs come only from lookups. |
+| Taste analysis (`urn:tag`) | 🧪 | 10 tags with `query.affinity`; `tag_id`, `subtype`, `types[]`. Tag names sometimes carry stray whitespace. | `tasteAnalysis` → tag evidence |
+| `urn:demographics` | 🧪 | 6 of 6 age buckets plus gender, on a −1..1 scale. Several unrelated anchors showed a strong 30–34 dip, so read it as relative and model-specific, never as audience share. | `demographics()` → `DemographicProfile` |
+| `/v2/analysis/compare` | 🟡 | 200 with 24–25 tag-like items with `query.score`. **The score's scale and meaning are undocumented.** | `compare()` is experimental and never becomes evidence. |
+| `urn:entity:videogame` | 🧪 / ❌ | `videogame` works; `video_game` returns 400 (the docs say `video_game`, and say 403 for unsupported types). | Not used in the MVP. |
+
+**Response-shape variance seen live (handled in `lib/qloo/schemas.ts`):** `tags: null` on some place results, and tag entries without `id` on some artist results. Tags are parsed leniently. Items missing required fields are skipped with a warning, and **Qloo's original rank positions are preserved**.
+
+**Rate limiting:** a run with 4 concurrent requests and no spacing got 2 × 429 in 20 calls (the retries recovered). At concurrency 3 with no spacing there was 1 × 429. With 250 ms pacing between request starts there were 0 × 429 in a 20-call run (the spike's 300 ms spacing also saw none in 30 calls). Defaults are now concurrency 3, `minIntervalMs` 250, and 1 retry honouring `Retry-After`. The quota itself is still unpublished.
+
+**Latency (probe):** p50 622 ms, p90 3.3 s, **max 10.6 s**, which is close to the 12 s timeout. The slow calls were the first queries for a category. Exploration runs: p50 0.7–1.0 s, max 2.7–4.3 s once paced.
+
+**Docs vs live conflicts (resolved in favour of live):**
+1. `signal.location.query` and `feature.explainability` work on entity types even though the per-type matrix omits them.
+2. `videogame` is the working spelling, not `video_game`.
+3. An unsupported type returns 400, not 403.
+4. An invalid tag signal returns 200 with results, not the documented 400.
+5. `/search` returns unrelated results instead of 404 for nonsense.
+

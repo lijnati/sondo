@@ -4,7 +4,7 @@ Sondo is an autonomous cultural-intelligence strategist for the Qloo Agentic Hac
 Read the relevant doc before changing an area: PRODUCT.md (scope, honesty rules), QLOO_RESEARCH.md (API truth), ARCHITECTURE.md (contracts, limits), DESIGN.md (UI), ROADMAP.md (current phase), HACKATHON.md (compliance).
 
 ## Phase gate
-- **Current phase: 1 (app shell).** Phase 0 is closed (spike G1–G2 passed live on 2026-10-17). Phase 1b (Qloo data layer) needs explicit authorization. Don't start a new phase without it.
+- **Current phase: 1b (Qloo data layer), complete.** Phases 0 and 1 are closed. Phase 2 (agent) needs explicit authorization. Don't start a new phase without it.
 
 ## Qloo
 - Host `https://hackathon.api.qloo.com` only. Header `X-Api-Key`. **GET with query params only** (POST fails).
@@ -20,7 +20,7 @@ Read the relevant doc before changing an area: PRODUCT.md (scope, honesty rules)
 - Every displayed claim has passed `validateClaims()`.
 
 ## Budgets (per run)
-Qloo ≤ 40 calls · LLM ≤ 6 calls · Qloo timeout 12 s · wall clock 150 s soft / 240 s hard · concurrency 4.
+Qloo ≤ 40 calls · LLM ≤ 6 calls · Qloo timeout 12 s · wall clock 150 s soft / 240 s hard · concurrency 3 with ≥ 250 ms between request starts (live 429s at 4 unpaced).
 
 ## Code
 - TypeScript strict, ESM, Zod at every boundary (brief, Qloo responses, LLM outputs, DB rows).
@@ -36,5 +36,7 @@ Qloo ≤ 40 calls · LLM ≤ 6 calls · Qloo timeout 12 s · wall clock 150 s so
 ## Commands
 - `pnpm dev` · `pnpm build` · `pnpm start` · `pnpm lint` · `pnpm typecheck` (runs `next typegen` first) · `pnpm test` (Vitest) · `pnpm e2e` (Playwright; builds and serves on :3100, or set `E2E_BASE_URL`).
 - Spike: `pnpm spike` (reads `.env.local`, Node ≥ 23.6). It writes a sanitized `spike/output/feasibility-summary.json`.
+- `pnpm probe`: live capability probe through `lib/qloo/*` (about 28 calls). It writes a sanitized `scripts/output/probe-summary.json` (safe to commit).
+- `pnpm explore <scenario> [--depth 1] [--save] [--no-cache]`: bounded live research for `scripts/scenarios/*.json` (≤ 40 calls). Console only. It caches responses in the gitignored `.qloo-cache/`; never commit them.
 - `pnpm eval` arrives in Phase 2.
 - TypeScript is pinned to `~6.0` because typescript-eslint doesn't support 7.x yet.

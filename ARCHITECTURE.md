@@ -37,7 +37,9 @@ Run Orchestrator (Node runtime, Fluid Compute, maxDuration 300s)
 
 **Hard limits per run:** Qloo ≤ **40** calls (cache hits are free); LLM ≤ **6** calls; total LLM output ≤ ~12k tokens; wall clock **150 s soft** (skip `deepen` and optional calls) and **240 s hard** (abort and return a partial report).
 
-**Retries:** Qloo gets 1 retry on 429/5xx/timeout (honoring `Retry-After`, else a 1.5 s backoff). **0 retries on 400/401/403/404.** On 401 the whole run aborts and an operator alert is logged. LLM gets 1 retry on transport errors. Schema failures go to `repair`, not to a blind retry.
+**Concurrency and pacing:** at most 3 concurrent Qloo requests, with request starts spaced ≥ 250 ms apart. The original plan said 4, but live runs hit 429s without spacing (QLOO_RESEARCH.md §10).
+
+**Retries:** Qloo gets 1 retry on 429/5xx/timeout (honoring `Retry-After`, capped at 10 s, else a 1.5 s backoff). **0 retries on 400/401/403/404.** On 401 the whole run aborts and an operator alert is logged. LLM gets 1 retry on transport errors. Schema failures go to `repair`, not to a blind retry.
 
 **Why this shape:** a single orchestrator with three LLM decision points is enough to be clearly *agentic*. The agent plans, chooses tools adaptively based on intermediate results, self-checks and repairs. It also stays deterministic enough to test, budget and audit. Multiple autonomous agents would add latency, cost and failure modes without adding evidence quality.
 
@@ -94,9 +96,19 @@ insights(i: {
 compare(i: { aRefs: string[]; bRefs: string[] }): { callId: string; raw: unknown } // shape TBD by spike
 ```
 
+**As implemented (Phase 1b)** in `lib/qloo/operations.ts`. Every operation takes a `QlooSession` (one client, so one budget, plus a `RefRegistry` and an evidence `Ledger`) and returns `{ record: ToolCallRecord, warnings: string[] }` plus its payload:
+- `searchEntities({query, types, take})` → `refs: ResolvedRef[]`. A `/search` 404 means no results.
+- `searchTags({query, tagTypes?, parentTypes?})`, `searchAudiences({audienceTypes})` and `listAudienceTypes()`.
+- `insights(type, InsightsInput)` → `items: EvidenceItem[]`, `empty`.
+- `tasteAnalysis(InsightsInput & {tagTypes?, parentTypes?})` → tag `EvidenceItem[]`.
+- `demographics({seedRefs})` → `DemographicProfile[]`.
+- `compare({aRefs, bRefs})` is **experimental**. Its score is undocumented, so it never becomes evidence.
+
+Dropped params, skipped malformed items and empty results are reported in `warnings` rather than hidden. Transport (`lib/qloo/client.ts`) owns the timeout, retries, budget, concurrency, pacing, cache and trace. A 401 or a second 429 halts the client for the rest of the run.
+
 Parameter builder rules:
-1. Each `filterType` has an **allowlist of params** taken from the Entity Type Parameter Guide. Unsupported params are dropped *before* the request, because Qloo would silently ignore them anyway.
-2. Location params follow spike G4.
+1. Each `filterType` has an **allowlist of params** taken from the Entity Type Parameter Guide, plus live-verified extras (`signal.location.query`, `feature.explainability`, `filter.location.query` on place/destination). `/search`, `/v2/tags`, `/v2/audiences` and compare have their own lists. Unsupported params are dropped *before* the request and reported, because Qloo would silently ignore them anyway.
+2. Location: `signal.location.query` for entity types, and `filter.location.query` for place/destination (QLOO_RESEARCH.md §10).
 3. GET only. Arrays are comma-joined.
 4. `take` is capped.
 
@@ -127,6 +139,15 @@ interface EvidenceItem {
   derived?: { lift?: number; newInTarget?: boolean; quadrant?: "mainstream_fit" | "distinctive_fit" | "weak_mainstream" | "long_tail" };
 }
 ```
+
+**Phase 1b additions** (`lib/evidence/types.ts`):
+- `entity.kind` is `"entity" | "tag"`, so taste-analysis tags are evidence too.
+- `query.inputRefs` lists the refs used as signals.
+- `missing[]` lists fields Qloo didn't return (affinity, popularity, tags, image).
+- `rank`/`of` are Qloo's original positions, even when malformed items were skipped.
+- Endpoint, params and retrieval time live on the linked `ToolCallRecord` (`callId`).
+
+`DemographicProfile` holds `urn:demographics` output verbatim (−1..1, relative). Lift and quadrant are in `lib/evidence/lift.ts`. Quadrant uses the rank half × popularity < 0.90 (absolute; per-list medians mislabelled 0.99 as niche).
 
 Invariants (unit-tested):
 - An `EvidenceItem` is created only inside `normalize()` from a real response object.
@@ -268,7 +289,9 @@ Rate limits: ≤ 5 new runs per IP-hash per day and a global daily cap (env var)
 ```
 app/                 (routes: /, /new, /r/[id], /api/runs)
 components/          (ui primitives, report/*, run/*)
-lib/qloo/            (client, params allowlists, schemas, normalize)
+lib/qloo/            (client, params allowlists, schemas, refs, operations, cache)
+lib/evidence/        (types, ledger, normalize, lift)
+scripts/             (probe.ts, explore.ts, scenarios/*.json; sanitized output/)
 lib/agent/           (orchestrator, nodes/*, prompts/*, budget, validate)
 lib/db/              (sql, cache, runs)
 tests/unit/          (synthetic fixtures only — fictional names, fake UUIDs)
