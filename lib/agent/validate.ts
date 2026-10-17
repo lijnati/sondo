@@ -34,7 +34,16 @@ export interface ValidationContext {
   findingIds: ReadonlySet<string>;
   /** True when evidence was sufficient, so three concepts are expected. */
   requireThree: boolean;
+  /** Numbers the model may repeat, e.g. the brief's age-bucket bounds ("25", "34"). */
+  allowedNumbers?: ReadonlySet<string>;
 }
+
+/** Bounds of Qloo age buckets ("25_to_29" → "25", "29") so "ages 25–34" is not a statistic. */
+export function ageBounds(ages: readonly string[]): Set<string> {
+  return new Set(ages.flatMap((a) => a.match(/\d+/g) ?? []));
+}
+
+const NO_NUMBERS: ReadonlySet<string> = new Set();
 
 /** Max share of cited Qloo entities two concepts may have in common. */
 export const MAX_CONCEPT_OVERLAP = 0.3;
@@ -62,14 +71,17 @@ function escapeRe(s: string) {
 }
 
 /** Numbers and performance language in a piece of model-written text. */
-export function textViolations(text: string, knownNames: readonly string[]): { code: "numeric" | "forbidden_phrase"; message: string }[] {
+export function textViolations(
+  text: string,
+  knownNames: readonly string[],
+  allowedNumbers: ReadonlySet<string> = NO_NUMBERS,
+): { code: "numeric" | "forbidden_phrase"; message: string }[] {
   const out: { code: "numeric" | "forbidden_phrase"; message: string }[] = [];
   let stripped = text;
   for (const n of knownNames) if (/\d/.test(n)) stripped = stripped.replace(new RegExp(escapeRe(n), "gi"), " ");
-  stripped = stripped.replace(YEAR, " ");
-  if (PERCENT.test(text) || /\d/.test(stripped) || MAGNITUDE.test(text)) {
-    out.push({ code: "numeric", message: "contains a number or percentage; numbers come from the ledger, not the model" });
-  }
+  stripped = stripped.replace(YEAR, " ").replace(/\d+/g, (d) => (allowedNumbers.has(d) ? " " : d));
+  const hit = PERCENT.exec(text)?.[0] ?? /\d[\d.,]*/.exec(stripped)?.[0] ?? MAGNITUDE.exec(text)?.[0];
+  if (hit) out.push({ code: "numeric", message: `contains "${hit}"; numbers and statistics come from the ledger, not the model` });
   const forbidden = assertedForbidden(text);
   if (forbidden) out.push({ code: "forbidden_phrase", message: `uses "${forbidden}", which affinity data cannot support` });
   return out;
@@ -78,17 +90,20 @@ export function textViolations(text: string, knownNames: readonly string[]): { c
 // ── ledger lookups ────────────────────────────────────────────────────────
 
 interface LedgerIndex {
+  allowedNumbers: ReadonlySet<string>;
   byId: Map<string, EvidenceItem>;
   /** Lowercased entity name → E# ids (several when the same name was retrieved more than once). */
   byName: Map<string, { ids: string[]; qlooIds: Set<string>; name: string }>;
   names: string[];
 }
 
-function indexLedger(ledger: Ledger): LedgerIndex {
+function indexLedger(ledger: Ledger, allowedNumbers: ReadonlySet<string> = NO_NUMBERS): LedgerIndex {
   const byId = new Map<string, EvidenceItem>();
   const byName = new Map<string, { ids: string[]; qlooIds: Set<string>; name: string }>();
   for (const it of ledger.all()) {
     byId.set(it.id, it);
+    // Only entities count as mentions: taste tags are ordinary words ("queer", "nostalgia").
+    if (it.entity.kind === "tag") continue;
     const name = it.entity.name.trim();
     if (name.length < 4) continue; // too short to detect reliably in prose
     const key = name.toLowerCase();
@@ -97,7 +112,7 @@ function indexLedger(ledger: Ledger): LedgerIndex {
     entry.qlooIds.add(it.entity.qlooId);
     byName.set(key, entry);
   }
-  return { byId, byName, names: [...byName.values()].map((e) => e.name) };
+  return { byId, byName, names: [...byName.values()].map((e) => e.name), allowedNumbers };
 }
 
 /** Ledger entities named in the text: unique → their first E#; ambiguous → null. */
@@ -123,7 +138,7 @@ function claimViolations(claim: Claim, path: string, idx: LedgerIndex, out: Viol
   if (claim.kind === "evidence" && valid.length === 0) {
     out.push({ code: "missing_citation", path, message: "is marked as evidence but cites no valid E#" });
   }
-  for (const v of textViolations(claim.text, idx.names)) out.push({ ...v, path });
+  for (const v of textViolations(claim.text, idx.names, idx.allowedNumbers)) out.push({ ...v, path });
   const cited = new Set(valid.map((id) => idx.byId.get(id)?.entity.qlooId));
   for (const m of mentions(claim.text, idx)) {
     const mentionedIds = idx.byName.get(m.name.toLowerCase())?.qlooIds ?? new Set();
@@ -134,7 +149,7 @@ function claimViolations(claim: Claim, path: string, idx: LedgerIndex, out: Viol
 }
 
 function freeTextViolations(text: string, path: string, conceptCited: Set<string | undefined>, idx: LedgerIndex, out: Violation[]) {
-  for (const v of textViolations(text, idx.names)) out.push({ ...v, path });
+  for (const v of textViolations(text, idx.names, idx.allowedNumbers)) out.push({ ...v, path });
   for (const m of mentions(text, idx)) {
     const q = idx.byName.get(m.name.toLowerCase())?.qlooIds ?? new Set();
     if (![...q].some((x) => conceptCited.has(x))) out.push({ code: "uncited_entity", path, message: `mentions "${m.name}" but the concept never cites it` });
@@ -153,12 +168,12 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 }
 
 export function checkStrategy(output: StrategyOutput, ctx: ValidationContext): Violation[] {
-  const idx = indexLedger(ctx.ledger);
+  const idx = indexLedger(ctx.ledger, ctx.allowedNumbers);
   const out: Violation[] = [];
 
   output.opportunities.forEach((o, i) => {
     claimViolations(o.rationale, `opportunities[${i}].rationale`, idx, out);
-    for (const v of textViolations(o.title, idx.names)) out.push({ ...v, path: `opportunities[${i}].title` });
+    for (const v of textViolations(o.title, idx.names, idx.allowedNumbers)) out.push({ ...v, path: `opportunities[${i}].title` });
     const unknown = o.findingIds.filter((f) => !ctx.findingIds.has(f));
     if (unknown.length) out.push({ code: "unknown_finding", path: `opportunities[${i}]`, message: `references ${unknown.join(", ")}, which are not findings` });
   });
@@ -208,9 +223,9 @@ export function checkStrategy(output: StrategyOutput, ctx: ValidationContext): V
 
 const REMOVED_INSIGHT = "Insight withheld: it contained an unsupported numeric or performance claim.";
 
-function scrub(text: string, names: readonly string[]): string {
+function scrub(text: string, names: readonly string[], allowed: ReadonlySet<string>): string {
   const sentences = text.split(/(?<=[.!?])\s+/);
-  return sentences.filter((s) => textViolations(s, names).length === 0).join(" ").trim();
+  return sentences.filter((s) => textViolations(s, names, allowed).length === 0).join(" ").trim();
 }
 
 interface Counters {
@@ -222,7 +237,7 @@ interface Counters {
 
 function fixClaim(claim: Claim, idx: LedgerIndex, n: Counters): Claim | null {
   n.checked++;
-  if (textViolations(claim.text, idx.names).length) {
+  if (textViolations(claim.text, idx.names, idx.allowedNumbers).length) {
     n.removed++;
     return null;
   }
@@ -252,11 +267,11 @@ export function finalizeStrategy(
   output: StrategyOutput,
   ctx: ValidationContext,
 ): { concepts: ValidatedConcept[]; opportunities: CulturalOpportunity[]; summary: Omit<ValidationSummary, "repairAttempted"> } {
-  const idx = indexLedger(ctx.ledger);
+  const idx = indexLedger(ctx.ledger, ctx.allowedNumbers);
   const violations = checkStrategy(output, ctx).map((v) => `${v.path}: ${v.message}`);
   const n: Counters = { autoAttached: 0, downgraded: 0, removed: 0, checked: 0 };
   const cleanText = (t: string) => {
-    const s = scrub(t, idx.names);
+    const s = scrub(t, idx.names, idx.allowedNumbers);
     if (s !== t.trim()) n.removed++;
     return s;
   };

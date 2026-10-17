@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CampaignConcept, StrategyOutput } from "@/lib/agent/schemas";
-import { checkStrategy, finalizeStrategy, textViolations, type ValidationContext } from "@/lib/agent/validate";
+import { ageBounds, checkStrategy, finalizeStrategy, textViolations, type ValidationContext } from "@/lib/agent/validate";
 import { Ledger, type EvidenceDraft } from "@/lib/evidence/ledger";
 
 // Synthetic ledger: fictional names only.
@@ -84,6 +84,15 @@ describe("textViolations", () => {
     expect(textViolations("No gimmicks. This drives conversions.", names).map((v) => v.code)).toContain("forbidden_phrase");
   });
 
+  // Regression (Phase 2 live run): the model echoed the brief's ages ("25–34") and every
+  // insight was stripped. Age-bucket bounds from the brief are context, not statistics.
+  it("allows the brief's age-bucket bounds but still flags other numbers", () => {
+    const allowed = ageBounds(["25_to_29", "30_to_34"]);
+    expect(textViolations("New Yorkers aged 25–34 who follow indie music", names, allowed)).toEqual([]);
+    expect(textViolations("Reaches 40 percent of 25–34s", names, allowed).map((v) => v.code)).toContain("numeric");
+    expect(textViolations("Over 3 creators", names, allowed)[0]?.message).toMatch(/"3"/);
+  });
+
   it("allows years and digits inside known entity names", () => {
     expect(textViolations("Since 2019, fans of 2 Fixture Queens gather here", names)).toEqual([]);
   });
@@ -146,6 +155,16 @@ describe("checkStrategy", () => {
     const s = good();
     s.concepts[0]!.positioning = "Reach 2 million New Yorkers";
     expect(checkStrategy(s, ctx())).toContainEqual(expect.objectContaining({ code: "numeric", path: "concepts[0].positioning" }));
+  });
+});
+
+describe("entity mentions", () => {
+  it("does not treat taste-tag names as entity mentions", () => {
+    const l = ledgerWith();
+    l.add([{ callId: "Q2", query: { filterType: "urn:tag", signalSummary: "s", variant: "target", inputRefs: [] }, entity: { kind: "tag", qlooId: "urn:tag:x", name: "nostalgia", type: "urn:tag:keyword", tags: [] }, rank: 1, of: 1 }]);
+    const s = good();
+    s.concepts[0]!.claims[0] = { text: "A campaign steeped in nostalgia.", kind: "hypothesis", evidenceIds: [] };
+    expect(checkStrategy(s, { ledger: l, findingIds: new Set(["F1"]), requireThree: true }).map((v) => v.code)).not.toContain("uncited_entity");
   });
 });
 
