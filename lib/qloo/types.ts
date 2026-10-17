@@ -45,6 +45,16 @@ export interface ResolvedRef {
   sourceCallId: string;
 }
 
+/** Audience shaping for an Insights query (ARCHITECTURE.md §3). */
+export interface AudienceSignals {
+  ages?: AgeBucket[];
+  /** Qloo models binary gender only; set it only when the brief states it. */
+  gender?: "male" | "female";
+  audienceRefs?: RefId[];
+  /** Passed as `signal.location.query` (live-verified; see QLOO_RESEARCH.md §10). */
+  locationQuery?: string;
+}
+
 /** Key-free record of one Qloo request (path and params only). */
 export interface ToolCallRecord {
   callId: string;
