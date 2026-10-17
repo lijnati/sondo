@@ -1,0 +1,15 @@
+{
+  "brandName": "Stride Loop",
+  "brandDescription": "A fictional sustainable sneaker brand making recycled-material city sneakers, launching its first collection.",
+  "audience": {
+    "description": "Culturally engaged young adults who follow music, shows and creators and care about sustainability.",
+    "ages": ["25_to_29", "30_to_34"]
+  },
+  "market": "New York City",
+  "objective": "launch",
+  "anchors": [
+    { "name": "Allbirds", "type": "brand" },
+    { "name": "Veja", "type": "brand" }
+  ],
+  "constraints": { "excludeCategories": ["book"], "tone": "warm, culturally fluent, never preachy" }
+}

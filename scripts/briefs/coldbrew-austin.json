@@ -1,0 +1,15 @@
+{
+  "brandName": "Oat Hour",
+  "brandDescription": "A fictional oat-milk cold brew brand launching ready-to-drink cans in Austin cafes and grocers.",
+  "audience": {
+    "description": "Young professionals who like indie music, outdoor weekends and easygoing comedy.",
+    "ages": ["25_to_29", "30_to_34"]
+  },
+  "market": "Austin",
+  "objective": "launch",
+  "anchors": [
+    { "name": "Khruangbin", "type": "artist" },
+    { "name": "Ted Lasso", "type": "tv_show" },
+    { "name": "Yeti", "type": "brand" }
+  ]
+}

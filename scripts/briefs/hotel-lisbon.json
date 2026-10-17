@@ -1,0 +1,14 @@
+{
+  "brandName": "Casa Azulejo",
+  "brandDescription": "A fictional design-led boutique hotel opening in Lisbon, with a cafe, local art program and rooftop bar.",
+  "audience": {
+    "description": "Design-minded travellers in their late thirties and early forties who plan trips around food, art and music.",
+    "ages": ["35_to_44"]
+  },
+  "market": "Lisbon",
+  "objective": "market_entry",
+  "anchors": [
+    { "name": "Ace Hotel", "type": "brand" },
+    { "name": "Monocle", "type": "brand" }
+  ]
+}
