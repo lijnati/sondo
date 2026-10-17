@@ -39,5 +39,5 @@ Qloo ≤ 24 calls · LLM ≤ 4 calls · ≤ 2 adaptive rounds · Qloo timeout 12
 - `pnpm probe`: live capability probe through `lib/qloo/*` (about 28 calls). It writes a sanitized `scripts/output/probe-summary.json` (safe to commit).
 - `pnpm explore <scenario> [--depth 1] [--save] [--no-cache]`: bounded live research for `scripts/scenarios/*.json` (≤ 40 calls). Console only. It caches responses in the gitignored `.qloo-cache/`; never commit them.
 - `pnpm agent <brief> [--json] [--out] [--no-cache] [--no-model]`: run the real agent on `scripts/briefs/*.json`. Needs `AI_GATEWAY_API_KEY` unless `--no-model` (Qloo-only research, deterministic plan and rules).
-- `pnpm model:smoke [provider/model]`: check that a gateway model handles structured output and tool calls.
+- `pnpm model:smoke [provider/model]`: check that a gateway model handles structured output and tool calls. The default free model has no native JSON-schema output, so `generateStructured` uses a forced tool call (`SONDO_STRUCTURED_MODE=tool|output` overrides).
 - TypeScript is pinned to `~6.0` because typescript-eslint doesn't support 7.x yet.
