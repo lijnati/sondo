@@ -93,7 +93,7 @@ async function tryResolve(st: ResearchState, a: PlannedAnchor, types: EntityType
 
 /** Resolve brand, anchors and peers. Untrusted (weak) matches are never used as seeds. */
 export async function resolveAnchors(st: ResearchState): Promise<void> {
-  for (const a of st.plan.anchors) {
+  for (let a of st.plan.anchors) {
     if (qlooCallsLeft(st) <= coreReserve(st.plan)) {
       st.warnings.push(`Skipped resolving "${a.name}" to keep Qloo budget for research.`);
       continue;
@@ -102,9 +102,17 @@ export async function resolveAnchors(st: ResearchState): Promise<void> {
     try {
       ref = await tryResolve(st, a, a.types);
       // Evidence-dependent fallback: a typed anchor that did not resolve is retried once
-      // across the plan's *plausible* alternate types. Never across every type: live, a
-      // magazine searched as a brand matched a same-named place abroad and skewed every
-      // downstream query (Phase 2 Lisbon run). No alternates → record and skip.
+      // across the plan's plausible alternate types — never across every type, and never
+      // into venues. Phase 2 live runs matched a same-named place abroad twice (once from an
+      // all-types retry, once from a model-planned "place" alternate), skewing every
+      // downstream query. A venue anchor must be typed explicitly in the brief.
+      if (!ref) {
+        const alternates = a.alternateTypes.filter((t) => t !== "place" && t !== "destination");
+        if (alternates.length < a.alternateTypes.length) {
+          st.warnings.push(`Did not retry "${a.name}" as a place or destination: venue names collide across cities. Type it as a place in the brief if it is a venue.`);
+        }
+        a = { ...a, alternateTypes: alternates };
+      }
       if (!ref && a.role !== "brand" && a.types.length > 0 && a.alternateTypes.length === 0) {
         recordDecision(st, {
           round: 0,
