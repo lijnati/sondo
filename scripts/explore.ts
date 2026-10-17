@@ -20,13 +20,11 @@ import { assignQuadrants, computeLift, type LiftResult } from "@/lib/evidence/li
 import type { EvidenceItem, Quadrant } from "@/lib/evidence/types";
 import { QlooError } from "@/lib/qloo/errors";
 import { createSession, demographics, insights, searchEntities, tasteAnalysis, type EvidenceResult } from "@/lib/qloo/operations";
-import type { EntityType, ResolvedRef, ToolCallRecord } from "@/lib/qloo/types";
+import { AGE_BUCKETS, ENTITY_TYPES, type EntityType, type ResolvedRef, type ToolCallRecord } from "@/lib/qloo/types";
 
 import { cliClient, fmt, percentile } from "./lib/cli";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ENTITY_TYPES = ["artist", "book", "brand", "destination", "movie", "person", "place", "podcast", "tv_show"] as const;
-const AGE_BUCKETS = ["24_and_younger", "25_to_29", "30_to_34", "35_to_44", "45_to_54", "55_and_older"] as const;
 
 const Scenario = z.object({
   id: z.string(),

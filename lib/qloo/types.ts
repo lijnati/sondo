@@ -9,25 +9,12 @@
  * Spike 2026-10-17: the video game type is spelled `videogame` (`video_game` → 400).
  * It is not used by the MVP, so it is intentionally absent here.
  */
-export type EntityType =
-  | "artist"
-  | "book"
-  | "brand"
-  | "destination"
-  | "movie"
-  | "person"
-  | "place"
-  | "podcast"
-  | "tv_show";
+export const ENTITY_TYPES = ["artist", "book", "brand", "destination", "movie", "person", "place", "podcast", "tv_show"] as const;
+export type EntityType = (typeof ENTITY_TYPES)[number];
 
 /** Qloo's six age buckets, exactly (`signal.demographics.age`). */
-export type AgeBucket =
-  | "24_and_younger"
-  | "25_to_29"
-  | "30_to_34"
-  | "35_to_44"
-  | "45_to_54"
-  | "55_and_older";
+export const AGE_BUCKETS = ["24_and_younger", "25_to_29", "30_to_34", "35_to_44", "45_to_54", "55_and_older"] as const;
+export type AgeBucket = (typeof AGE_BUCKETS)[number];
 
 /** Minted by Sondo when Qloo returns a result, so the LLM can only reference real things. */
 export type RefId = `ref_${string}`;
