@@ -1,0 +1,22 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# private Qloo response data — never commit (hackathon guide: no Qloo data in public repos)
+.qloo-cache/
+**/raw-responses/
+
+# node / next
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.vercel
+
+# os
+.DS_Store
+Thumbs.db
