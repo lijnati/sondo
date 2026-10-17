@@ -1,36 +1,10 @@
 /**
- * Evidence and run-stream contracts from ARCHITECTURE.md §4 and §9. Types only;
- * the agent nodes, ledger and validateClaims() are Phase 2.
+ * Run-stream contracts from ARCHITECTURE.md §9. Types only; the agent nodes and
+ * validateClaims() are Phase 2. The evidence model lives in lib/evidence/types.ts.
  */
 import type { ToolCallRecord } from "@/lib/qloo/types";
 
-export type EvidenceId = `E${number}`;
-
-export type Quadrant = "mainstream_fit" | "distinctive_fit" | "weak_mainstream" | "long_tail";
-
-/** Created only inside normalize() from a real Qloo response. */
-export interface EvidenceItem {
-  id: EvidenceId;
-  callId: string;
-  query: { filterType: string; signalSummary: string; variant: "target" | "baseline" | "deepen" };
-  entity: {
-    qlooId: string;
-    name: string;
-    type: string;
-    imageUrl?: string;
-    tags: { id: string; name: string }[];
-  };
-  /** 1-based position in that response. */
-  rank: number;
-  of: number;
-  /** Copied verbatim from `query.affinity` when present (spike: present on insights results). */
-  affinity?: number;
-  /** Qloo percentile 0–1, copied verbatim. */
-  popularity?: number;
-  explainability?: { ref: string; contribution: number }[];
-  /** Sondo heuristics — always labelled as such in the UI. */
-  derived?: { lift?: number; newInTarget?: boolean; quadrant?: Quadrant };
-}
+export type { EvidenceId, EvidenceItem, Quadrant } from "@/lib/evidence/types";
 
 export type NodeName =
   | "validateBrief"
