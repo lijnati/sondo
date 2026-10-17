@@ -1,6 +1,28 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { parseServerEnv, QLOO_HACKATHON_HOST } from "@/lib/env/schema";
+
+// `server-only` throws outside the React server runtime; stub it for unit tests.
+vi.mock("server-only", () => ({}));
+
+describe("requireEnv", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("throws a key-free error when QLOO_API_KEY is missing", async () => {
+    vi.stubEnv("QLOO_API_KEY", "");
+    const { requireEnv } = await import("@/lib/env/server");
+    expect(() => requireEnv("QLOO_API_KEY")).toThrow("QLOO_API_KEY is not configured");
+  });
+
+  it("returns the key when configured", async () => {
+    vi.stubEnv("QLOO_API_KEY", "synthetic-key");
+    const { requireEnv } = await import("@/lib/env/server");
+    expect(requireEnv("QLOO_API_KEY")).toBe("synthetic-key");
+  });
+});
 
 // Synthetic values only — never real credentials.
 describe("parseServerEnv", () => {
