@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "spike/output/**",
     "playwright-report/**",
     "test-results/**",
+    // Vendored pixel-meadow scene generator (IIFE, not application code).
+    "lib/pixel-scene/pixel-scene.js",
   ]),
 ]);
 
