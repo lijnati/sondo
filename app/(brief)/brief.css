@@ -1,0 +1,56 @@
+/* Brief page only. Shares the meadow tokens from marketing.css. */
+
+.marketing .brief-hero {
+  height: auto;
+  min-height: 640px;
+}
+
+.marketing .brief-hero .sky-copy {
+  margin: 48px auto 80px;
+}
+
+.marketing .shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+}
+
+.marketing .empty-card {
+  padding: 28px 30px;
+  background: var(--sheet);
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+.marketing .field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.marketing .field-chip {
+  padding: 7px 14px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  background: var(--paper);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+@media (max-width: 960px) {
+  .marketing .shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .marketing .brief-hero {
+    min-height: 0;
+  }
+
+  .marketing .brief-hero .sky-copy {
+    margin: 36px auto 56px;
+  }
+}
