@@ -76,6 +76,22 @@ test("marketing stays paper-light while product dark mode is unchanged", async (
   expect(marketingBg).toBe("rgb(255, 255, 255)");
 
   await page.goto("/new");
+  const briefBg = await page.locator(".marketing").evaluate((node) => getComputedStyle(node).backgroundColor);
+  expect(briefBg).toBe("rgb(255, 255, 255)");
+
+  await page.goto("/r/does-not-exist");
   const productBg = await page.locator("body").evaluate((node) => getComputedStyle(node).backgroundColor);
   expect(productBg).toBe("rgb(11, 11, 12)");
+});
+
+test("the brief page paints a meadow and keeps its title", async ({ page }) => {
+  await page.goto("/new");
+  await expect(page.getByRole("heading", { level: 1, name: "Build a cultural brief" })).toBeVisible();
+  const canvas = page.locator("[data-preset='meadow'] .scene-art canvas");
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  expect(box?.width ?? 0).toBeGreaterThan(100);
+  expect(box?.height ?? 0).toBeGreaterThan(100);
+  const seeds = await page.locator("[data-preset]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-seed")));
+  expect(seeds).toEqual(expect.arrayContaining(["11", "28", "31"]));
 });
