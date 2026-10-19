@@ -13,13 +13,12 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { priceFor } from "@/lib/agent/budget";
 import { BriefValidationError, runAgent } from "@/lib/agent/orchestrator";
 import type { AgentRunResult, Claim } from "@/lib/agent/schemas";
 import type { RunEvent } from "@/lib/agent/types";
-import { parseServerEnv } from "@/lib/env/schema";
 
-import { cliClient, fmt } from "./lib/cli";
+import { liveAgentDeps, requireLiveEnv } from "./lib/agent-deps";
+import { fmt } from "./lib/cli";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -30,18 +29,11 @@ if (!target) {
   process.exit(2);
 }
 
-const env = parseServerEnv(process.env);
 const noModel = flag("no-model");
-if (!env.QLOO_API_KEY || (!env.AI_GATEWAY_API_KEY && !noModel)) {
-  console.error(
-    `Live run blocked: ${[!env.QLOO_API_KEY && "QLOO_API_KEY", !env.AI_GATEWAY_API_KEY && !noModel && "AI_GATEWAY_API_KEY"].filter(Boolean).join(" and ")} not set in .env.local. No requests were made. (Use --no-model to run the Qloo side only.)`,
-  );
-  process.exit(2);
-}
+const env = requireLiveEnv({ noModel });
 
 const briefPath = target.endsWith(".json") ? resolve(target) : join(HERE, "briefs", `${target}.json`);
 const brief: unknown = JSON.parse(readFileSync(briefPath, "utf8"));
-const price = priceFor(env.SONDO_MODEL, { ...(env.SONDO_MODEL_INPUT_USD_PER_MTOK !== undefined ? { input: env.SONDO_MODEL_INPUT_USD_PER_MTOK } : {}), ...(env.SONDO_MODEL_OUTPUT_USD_PER_MTOK !== undefined ? { output: env.SONDO_MODEL_OUTPUT_USD_PER_MTOK } : {}) });
 const err = (s: string) => process.stderr.write(`${s}\n`);
 
 function progress(e: RunEvent) {
@@ -85,12 +77,12 @@ function describeAction(a: AgentRunResult["decisions"][number]["action"]): strin
   }
 }
 
-function claimLine(c: Claim, r: AgentRunResult): string {
+function claimLine(c: Claim & { support?: string }, r: AgentRunResult): string {
   const names = c.evidenceIds.map((id) => {
     const it = r.evidence.find((e) => e.id === id);
     return it ? `${id} ${it.entity.name}` : id;
   });
-  return `${c.kind === "evidence" ? "EVIDENCE " : "HYPOTHESIS"} ${c.text}${names.length ? `  [${names.join("; ")}]` : ""}`;
+  return `${c.kind === "evidence" ? "EVIDENCE " : "HYPOTHESIS"}${c.support ? ` (${c.support})` : ""} ${c.text}${names.length ? `  [${names.join("; ")}]` : ""}`;
 }
 
 function print(r: AgentRunResult) {
@@ -125,7 +117,7 @@ function print(r: AgentRunResult) {
     for (const n of c.notes) p(`  note: ${n}`);
   }
   const v = r.validation;
-  p(`\nVALIDATION · claims checked ${v.claimsChecked} · auto-cited ${v.citationsAutoAttached} · downgraded ${v.downgradedToHypothesis} · removed ${v.removed} · repair ${v.repairAttempted ? "yes" : "no"}`);
+  p(`\nVALIDATION · claims checked ${v.claimsChecked} · auto-cited ${v.citationsAutoAttached} · downgraded ${v.downgradedToHypothesis} · removed ${v.removed} · mismatched citations dropped ${v.mismatchedCitations} · repair ${v.repairAttempted ? "yes" : "no"}`);
   for (const x of v.violations.slice(0, 12)) p(`  violation (pre-fix): ${x}`);
   if (r.warnings.length) {
     p("\nWARNINGS");
@@ -156,16 +148,7 @@ async function main() {
   const controller = new AbortController();
   process.on("SIGINT", () => controller.abort(new Error("Cancelled from the terminal")));
   try {
-    const result = await runAgent(
-      brief,
-      {
-        qloo: ({ maxCalls, onCall }) => cliClient({ budget: { maxCalls }, fileCache: !flag("no-cache"), onCall }),
-        model: { model: env.SONDO_MODEL, modelId: noModel ? "none (--no-model)" : env.SONDO_MODEL, secrets: [env.AI_GATEWAY_API_KEY ?? "", env.QLOO_API_KEY as string], ...(env.SONDO_STRUCTURED_MODE ? { structuredMode: env.SONDO_STRUCTURED_MODE } : {}) },
-        price,
-        budget: { runCostLimitUsd: env.SONDO_RUN_COST_LIMIT_USD, ...(noModel ? { llmCalls: 0 } : {}) },
-      },
-      { onEvent: progress, signal: controller.signal },
-    );
+    const result = await runAgent(brief, liveAgentDeps(env, { noModel, fileCache: !flag("no-cache") }), { onEvent: progress, signal: controller.signal });
     if (flag("json")) process.stdout.write(`${JSON.stringify(sanitized(result), null, 2)}\n`);
     else print(result);
     if (flag("out")) {

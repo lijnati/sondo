@@ -1,0 +1,10 @@
+{
+  "brandName": "Liquid Death",
+  "brandDescription": "A real, well-known challenger canned-water brand with irreverent, heavy-metal-inspired branding, planning a Los Angeles awareness push.",
+  "audience": {
+    "description": "Young adults who like punk, metal and alternative comedy, skate culture and irreverent humor.",
+    "ages": ["25_to_29", "30_to_34"]
+  },
+  "market": "Los Angeles",
+  "objective": "awareness"
+}

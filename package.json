@@ -19,7 +19,8 @@
     "probe": "tsx --env-file-if-exists=.env.local scripts/probe.ts",
     "explore": "tsx --env-file-if-exists=.env.local scripts/explore.ts",
     "agent": "tsx --env-file-if-exists=.env.local scripts/agent.ts",
-    "model:smoke": "tsx --env-file-if-exists=.env.local scripts/model-smoke.ts"
+    "model:smoke": "tsx --env-file-if-exists=.env.local scripts/model-smoke.ts",
+    "eval": "tsx --env-file-if-exists=.env.local scripts/eval.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.3.1",
