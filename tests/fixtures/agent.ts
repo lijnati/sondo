@@ -186,6 +186,11 @@ export function evidenceByCategory(prompt: string): Map<string, string[]> {
   return out;
 }
 
+/** E# → entity name, parsed from the same evidence block. */
+export function evidenceNames(prompt: string): Map<string, string> {
+  return new Map([...prompt.matchAll(/^(E\d+) \| [a-z_]+ \| ([^|\n]+?) \|/gm)].map((m) => [m[1] as string, m[2] as string]));
+}
+
 export const defaultPlan = {
   anchors: [{ name: "Fixture Brand Alpha", type: "brand", alternateTypes: [] }],
   peerBrands: [],
@@ -200,6 +205,9 @@ export const defaultPlan = {
 /** A well-formed strategy that cites distinct evidence per concept, built from the prompt. */
 export function groundedStrategy(prompt: string) {
   const by = evidenceByCategory(prompt);
+  const names = evidenceNames(prompt);
+  // Claims name what they cite, as the relevance check requires.
+  const named = (ids: string[]) => ids.map((id) => names.get(id)).filter(Boolean).join(", ");
   // Only categories deep enough to give each concept distinct items.
   const cats = [...by.keys()].filter((c) => (by.get(c)?.length ?? 0) >= 7);
   const pick = (ci: number, from: number) => {
@@ -213,7 +221,7 @@ export function groundedStrategy(prompt: string) {
   };
   const angles = ["mainstream_anchor", "distinctive_niche", "cross_category_bridge"] as const;
   return {
-    opportunities: [{ title: "Shared cultural theme", rationale: { text: "The audience's signals cluster around a shared theme.", kind: "evidence", evidenceIds: pick(0, 0).slice(0, 2) }, findingIds: ["F1"] }],
+    opportunities: [{ title: "Shared cultural theme", rationale: { text: `The audience's signals cluster around ${named(pick(0, 0).slice(0, 2))}.`, kind: "evidence", evidenceIds: pick(0, 0).slice(0, 2) }, findingIds: ["F1"] }],
     concepts: angles.map((angle, i) => {
       const ids = pick(i, i * 2);
       return {
@@ -221,11 +229,11 @@ export function groundedStrategy(prompt: string) {
         name: `Concept ${["Alpha", "Beta", "Gamma"][i]}`,
         positioning: "A positioning built on shared cultural taste.",
         intendedAudience: "Young adults in the market",
-        culturalInsight: { text: "These signals rank highly for this audience.", kind: "evidence", evidenceIds: ids.slice(0, 2) },
+        culturalInsight: { text: `${named(ids.slice(0, 2))} stand out for this audience.`, kind: "evidence", evidenceIds: ids.slice(0, 2) },
         concept: "A campaign around the cited cultural signals.",
-        opportunities: [{ kind: "partnership", idea: "Collaborate with a cited partner.", evidenceIds: ids.slice(0, 1) }],
+        opportunities: [{ kind: "partnership", idea: `Collaborate with ${named(ids.slice(0, 1))}.`, evidenceIds: ids.slice(0, 1) }],
         channels: ["creator collaboration"],
-        claims: [{ text: "The cited items over-index for this audience.", kind: "evidence", evidenceIds: ids }],
+        claims: [{ text: `${named(ids)} resonate with this audience.`, kind: "evidence", evidenceIds: ids }],
         assumptions: ["Partners are open to collaboration."],
         risks: ["Affinity is not purchase intent."],
       };

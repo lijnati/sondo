@@ -152,7 +152,22 @@ export type StrategyOutput = z.infer<typeof StrategyOutput>;
 
 export type GroundingLevel = "grounded" | "partial" | "insufficient_evidence";
 
-export interface ValidatedConcept extends CampaignConcept {
+/** How well a claim's citations relate to its text (lib/agent/relevance.ts). */
+export type ClaimSupport = "direct" | "contextual" | "weak";
+
+export interface ValidatedClaim extends Claim {
+  /** "weak" = cited items exist but no name, tag or category links them to the text. */
+  support: ClaimSupport;
+}
+
+export interface ValidatedOpportunity extends Omit<CulturalOpportunity, "rationale"> {
+  rationale: ValidatedClaim;
+}
+
+export interface ValidatedConcept extends Omit<CampaignConcept, "culturalInsight" | "claims" | "opportunities"> {
+  culturalInsight: ValidatedClaim;
+  claims: ValidatedClaim[];
+  opportunities: (CampaignConcept["opportunities"][number] & { support: ClaimSupport })[];
   grounding: GroundingLevel;
   /** Distinct ledger categories cited by this concept. */
   citedCategories: string[];
@@ -170,6 +185,8 @@ export interface ValidationSummary {
   citationsAutoAttached: number;
   downgradedToHypothesis: number;
   removed: number;
+  /** Citations removed because they did not relate to the claim text. */
+  mismatchedCitations: number;
   repairAttempted: boolean;
   violations: string[];
 }
@@ -193,7 +210,7 @@ export interface AgentRunResult {
   plan?: ResearchPlan;
   decisions: Decision[];
   findings: CulturalFinding[];
-  opportunities: CulturalOpportunity[];
+  opportunities: ValidatedOpportunity[];
   concepts: ValidatedConcept[];
   evidence: readonly EvidenceItem[];
   refs: ResolvedRef[];

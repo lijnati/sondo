@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CampaignConcept, StrategyOutput } from "@/lib/agent/schemas";
-import { ageBounds, checkStrategy, finalizeStrategy, textViolations, type ValidationContext } from "@/lib/agent/validate";
+import { ageBounds, checkStrategy, finalizeStrategy, stripInlineRefs, textViolations, type ValidationContext } from "@/lib/agent/validate";
 import { Ledger, type EvidenceDraft } from "@/lib/evidence/ledger";
 
 // Synthetic ledger: fictional names only.
@@ -30,6 +30,19 @@ function ledgerWith(): Ledger {
   return l;
 }
 
+const NAMES: Record<string, string> = {
+  E1: "Fixture Artist One",
+  E2: "Fixture Podcast",
+  E3: "Fixture Show",
+  E4: "Fixture Cafe",
+  E5: "Fixture Label",
+  E6: "2 Fixture Queens",
+  E7: "Fixture Novel",
+  E8: "Fixture Film",
+};
+/** Claims name what they cite, so the relevance check can link text and evidence. */
+const named = (ids: string[]) => ids.map((id) => NAMES[id]).filter(Boolean).join(", ");
+
 const ctx = (): ValidationContext => ({ ledger: ledgerWith(), findingIds: new Set(["F1", "F2"]), requireThree: true });
 
 function concept(angle: CampaignConcept["angle"], ids: string[], patch: Partial<CampaignConcept> = {}): CampaignConcept {
@@ -38,11 +51,11 @@ function concept(angle: CampaignConcept["angle"], ids: string[], patch: Partial<
     name: `Concept ${angle}`,
     positioning: "A positioning statement without numbers.",
     intendedAudience: "Young adults in the city",
-    culturalInsight: { text: "This audience shows strong cultural affinity with the cited signals.", kind: "evidence", evidenceIds: ids.slice(0, 2) },
+    culturalInsight: { text: `This audience shows strong cultural affinity with ${named(ids.slice(0, 2))}.`, kind: "evidence", evidenceIds: ids.slice(0, 2) },
     concept: "A campaign idea built around shared cultural moments.",
-    opportunities: [{ kind: "partnership", idea: "Co-create a limited series with a cited partner.", evidenceIds: ids.slice(0, 1) }],
+    opportunities: [{ kind: "partnership", idea: `Co-create a limited drop with ${named(ids.slice(0, 1))}.`, evidenceIds: ids.slice(0, 1) }],
     channels: ["social video"],
-    claims: [{ text: "The cited items rank highly for this audience signal set.", kind: "evidence", evidenceIds: ids }],
+    claims: [{ text: `${named(ids)} rank highly for this audience signal set.`, kind: "evidence", evidenceIds: ids }],
     assumptions: ["Partners are open to collaboration."],
     risks: ["Affinity is not purchase intent."],
     ...patch,
@@ -95,6 +108,32 @@ describe("textViolations", () => {
 
   it("allows years and digits inside known entity names", () => {
     expect(textViolations("Since 2019, fans of 2 Fixture Queens gather here", names)).toEqual([]);
+  });
+});
+
+// Regression (Phase 2 live Los Angeles eval): the model wrote "(E11)" into prose and the
+// number rule withheld the whole insight as an invented statistic.
+describe("inline evidence references", () => {
+  it.each([
+    ["Fixture Cafe (E4) is a favorite.", "Fixture Cafe is a favorite."],
+    ["Pair Fixture Show and Fixture Film [E3, E8].", "Pair Fixture Show and Fixture Film."],
+    ["Fixture Podcast (E2 and E6) leads.", "Fixture Podcast leads."],
+    ["E1 sets the tone.", "sets the tone."],
+  ])("strips %j", (text, expected) => {
+    expect(stripInlineRefs(text)).toBe(expected);
+  });
+
+  it("does not strip ordinary words or real numbers", () => {
+    expect(stripInlineRefs("Every 3 weeks at EPCOT.")).toBe("Every 3 weeks at EPCOT.");
+  });
+
+  it("keeps an insight that only had inline ids, and still flags real numbers", () => {
+    const s = good();
+    s.concepts[0]!.culturalInsight = { text: "Fixture Artist One (E1) and Fixture Show (E3) anchor this audience.", kind: "evidence", evidenceIds: ["E1", "E3"] };
+    s.concepts[1]!.culturalInsight = { text: "Fixture Podcast (E2) reaches 40 percent of fans.", kind: "evidence", evidenceIds: ["E2"] };
+    const r = finalizeStrategy(s, ctx());
+    expect(r.concepts[0]!.culturalInsight).toMatchObject({ text: "Fixture Artist One and Fixture Show anchor this audience.", kind: "evidence", support: "direct" });
+    expect(r.concepts[1]!.notes).toContain("Cultural insight removed by validation.");
   });
 });
 
@@ -220,6 +259,59 @@ describe("finalizeStrategy", () => {
     const r = finalizeStrategy(s, ctx());
     expect(r.concepts.map((c) => c.grounding)).toEqual(["grounded", "partial", "insufficient_evidence"]);
     expect(r.concepts[0]!.citedCategories.sort()).toEqual(["artist", "brand", "tv_show"]);
+  });
+
+  // Regression (Phase 2 live Lisbon run): a real, retrieved E# cited for an unrelated statement.
+  it("drops a citation that does not support its claim and never invents a replacement", () => {
+    const s = good();
+    s.concepts[0]!.claims.push({ text: "A pop-up at a neighborhood bakery and cafe.", kind: "evidence", evidenceIds: ["E1"] });
+    const r = finalizeStrategy(s, ctx());
+    const cl = r.concepts[0]!.claims.at(-1)!;
+    expect(cl).toMatchObject({ kind: "hypothesis", evidenceIds: [], support: "weak" });
+    expect(r.summary.mismatchedCitations).toBe(1);
+  });
+
+  it("keeps a mismatched claim's other, relevant citation", () => {
+    const s = good();
+    s.concepts[1]!.claims.push({ text: "Regulars of Fixture Cafe treat it as a neighborhood bakery and cafe.", kind: "evidence", evidenceIds: ["E1", "E4"] });
+    const r = finalizeStrategy(s, ctx());
+    expect(r.concepts[1]!.claims.at(-1)).toMatchObject({ kind: "evidence", evidenceIds: ["E4"], support: "direct" });
+  });
+
+  it("downgrades an evidence claim whose citations exist but do not relate to its text", () => {
+    const s = good();
+    s.concepts[2]!.claims.push({ text: "Travellers seek authentic moments.", kind: "evidence", evidenceIds: ["E2"] });
+    const r = finalizeStrategy(s, ctx());
+    // Kept as context for the reader, but no longer presented as evidence.
+    expect(r.concepts[2]!.claims.at(-1)).toMatchObject({ kind: "hypothesis", evidenceIds: ["E2"], support: "weak" });
+  });
+
+  it("keeps contextual evidence that names the cited item's category", () => {
+    const s = good();
+    s.concepts[1]!.claims.push({ text: "Podcasts are where this audience spends its commute.", kind: "evidence", evidenceIds: ["E2"] });
+    const r = finalizeStrategy(s, ctx());
+    expect(r.concepts[1]!.claims.at(-1)).toMatchObject({ kind: "evidence", evidenceIds: ["E2"], support: "contextual" });
+  });
+
+  it("does not count unlinked citations towards grounding", () => {
+    const s = good();
+    s.concepts[0] = concept("mainstream_anchor", ["E1", "E3", "E5"], {
+      culturalInsight: { text: "A mood of quiet confidence.", kind: "evidence", evidenceIds: ["E1", "E3"] },
+      claims: [{ text: "A mood of quiet confidence.", kind: "evidence", evidenceIds: ["E1", "E3", "E5"] }],
+      opportunities: [{ kind: "partnership", idea: "Partner with Fixture Label.", evidenceIds: ["E5"] }],
+    });
+    const r = finalizeStrategy(s, ctx());
+    expect(r.concepts[0]!.grounding).toBe("partial");
+    expect(r.concepts[0]!.culturalInsight.kind).toBe("hypothesis");
+  });
+
+  it("flags mismatched and weakly supported citations for the repair call", () => {
+    const s = good();
+    s.concepts[0]!.claims.push({ text: "A pop-up at a neighborhood bakery and cafe.", kind: "evidence", evidenceIds: ["E1"] });
+    s.concepts[1]!.claims.push({ text: "Travellers seek authentic moments.", kind: "evidence", evidenceIds: ["E2"] });
+    const codes = checkStrategy(s, ctx()).map((v) => v.code);
+    expect(codes).toContain("citation_mismatch");
+    expect(codes).toContain("weak_support");
   });
 
   it("never lets an evidence claim survive without a valid citation", () => {

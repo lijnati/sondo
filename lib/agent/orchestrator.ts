@@ -25,9 +25,9 @@ import {
   StrategyOutput,
   type AgentRunResult,
   type AgentRunStatus,
-  type CulturalOpportunity,
   type ResearchPlan,
   type ValidatedConcept,
+  type ValidatedOpportunity,
   type ValidationSummary,
 } from "./schemas";
 import type { RunEvent } from "./types";
@@ -59,6 +59,8 @@ const STATIC_LIMITATIONS = [
 const REPAIRABLE: ReadonlySet<Violation["code"]> = new Set([
   "unknown_evidence",
   "missing_citation",
+  "citation_mismatch",
+  "weak_support",
   "numeric",
   "forbidden_phrase",
   "duplicate_angle",
@@ -101,8 +103,8 @@ export async function runAgent(briefInput: unknown, deps: AgentDeps, opts: RunOp
   let st: ResearchState | undefined;
   let crit: Critique | undefined;
   let concepts: ValidatedConcept[] = [];
-  let opportunities: CulturalOpportunity[] = [];
-  let validation: ValidationSummary = { claimsChecked: 0, citationsAutoAttached: 0, downgradedToHypothesis: 0, removed: 0, repairAttempted: false, violations: [] };
+  let opportunities: ValidatedOpportunity[] = [];
+  let validation: ValidationSummary = { claimsChecked: 0, citationsAutoAttached: 0, downgradedToHypothesis: 0, removed: 0, mismatchedCitations: 0, repairAttempted: false, violations: [] };
   let failure: string | undefined;
 
   emit({ t: "run.started", runId, budget: { qloo: budget.qlooCalls, llm: budget.llmCalls } });
