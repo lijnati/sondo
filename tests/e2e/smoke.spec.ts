@@ -7,7 +7,7 @@ test("landing renders the hero and the CTA opens the brief page", async ({ page 
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: "Stop guessing what your audience loves." })).toBeVisible();
 
-  await page.getByRole("link", { name: "Build a cultural brief" }).click();
+  await page.getByRole("link", { name: "Build a cultural brief" }).first().click();
   await expect(page).toHaveURL(/\/new$/);
   await expect(page.getByRole("heading", { level: 1, name: "Build a cultural brief" })).toBeVisible();
 
