@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  // Dev assets are refused for any host other than localhost. 127.0.0.1 is the
+  // usual one, and without this the meadow script never loads.
+  allowedDevOrigins: ["127.0.0.1"],
 };
 
 export default nextConfig;
