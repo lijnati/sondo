@@ -363,6 +363,20 @@
   text-align: center;
 }
 
+/* Local haze so the lede and fine print stay readable where the hills rise. */
+.marketing .sky-copy::before {
+  position: absolute;
+  z-index: -1;
+  top: 46%;
+  left: 50%;
+  width: min(980px, 130%);
+  height: 128%;
+  background: radial-gradient(ellipse at center, rgba(8, 24, 20, 0.5) 0%, rgba(8, 24, 20, 0.22) 52%, transparent 74%);
+  content: "";
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
 .marketing .sky-title {
   max-width: 880px;
   margin: 0 auto;
@@ -392,10 +406,15 @@
 }
 
 .marketing .sky-fine {
-  margin-top: 20px;
-  color: #f4fbff;
+  display: inline-block;
+  max-width: 40ch;
+  margin-top: 18px;
+  padding: 7px 14px;
+  color: #fff;
   font-size: 12px;
-  text-shadow: 0 1px 16px rgba(10, 30, 50, 0.55);
+  line-height: 1.45;
+  background: rgba(10, 28, 22, 0.72);
+  border-radius: 999px;
 }
 
 /* ---------- proof ---------- */
@@ -1197,7 +1216,12 @@
   }
 
   .marketing .sky-copy {
-    margin: 56px auto 72px;
+    margin: 48px auto 64px;
+  }
+
+  .marketing .sky-copy::before {
+    height: 140%;
+    background: radial-gradient(ellipse at center, rgba(6, 22, 18, 0.78) 0%, rgba(6, 22, 18, 0.48) 56%, transparent 78%);
   }
 
   .marketing .sky-title {
