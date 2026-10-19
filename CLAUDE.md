@@ -4,7 +4,7 @@ Sondo is an autonomous cultural-intelligence strategist for the Qloo Agentic Hac
 Read the relevant doc before changing an area: PRODUCT.md (scope, honesty rules), QLOO_RESEARCH.md (API truth), ARCHITECTURE.md (contracts, limits), DESIGN.md (UI), ROADMAP.md (current phase), HACKATHON.md (compliance).
 
 ## Phase gate
-- **Current phase: 2 (agent engine).** Phases 0, 1 and 1b are closed. Phase 3 (app integration) needs explicit authorization. Don't start a new phase without it.
+- **Phase 2 (agent engine) is closed** (2026-10-19; results in ROADMAP.md). Phases 0, 1, 1b and 2 are closed. **Phase 3 (app integration) needs explicit authorization.** Don't start a new phase without it.
 
 ## Qloo
 - Host `https://hackathon.api.qloo.com` only. Header `X-Api-Key`. **GET with query params only** (POST fails).
@@ -17,7 +17,7 @@ Read the relevant doc before changing an area: PRODUCT.md (scope, honesty rules)
 - Entity IDs, scores and evidence IDs come only from code paths that parsed a real Qloo response. The LLM references evidence by `E#` and refs by `ref_*` only.
 - The LLM never writes numbers or percentages. The UI renders numbers from the ledger.
 - No claims of purchase intent, conversion, ROI, audience share or causality. Derived metrics (lift, distinctiveness) are always labelled "Sondo heuristic".
-- Every displayed claim has passed `validateClaims()`.
+- Every displayed claim has passed validation (`checkStrategy`/`finalizeStrategy` in `lib/agent/validate.ts`), including citation relevance (`lib/agent/relevance.ts`). A citation must relate to the text that cites it, and an evidence claim without a relevant citation is shown as a hypothesis.
 
 ## Budgets (per run)
 Qloo ≤ 24 calls · LLM ≤ 4 calls · ≤ 2 adaptive rounds · Qloo timeout 12 s · model call 60 s · wall clock 120 s soft / 180 s hard · concurrency 3 with ≥ 250 ms between request starts · estimated run cost ≤ $0.15 (not a billing cap). Source of truth: `lib/agent/budget.ts`.
@@ -39,5 +39,6 @@ Qloo ≤ 24 calls · LLM ≤ 4 calls · ≤ 2 adaptive rounds · Qloo timeout 12
 - `pnpm probe`: live capability probe through `lib/qloo/*` (about 28 calls). It writes a sanitized `scripts/output/probe-summary.json` (safe to commit).
 - `pnpm explore <scenario> [--depth 1] [--save] [--no-cache]`: bounded live research for `scripts/scenarios/*.json` (≤ 40 calls). Console only. It caches responses in the gitignored `.qloo-cache/`; never commit them.
 - `pnpm agent <brief> [--json] [--out] [--no-cache] [--no-model]`: run the real agent on `scripts/briefs/*.json`. Needs `AI_GATEWAY_API_KEY` unless `--no-model` (Qloo-only research, deterministic plan and rules).
+- `pnpm eval [--only a,b] [--cache] [--out]`: the Phase 2 evaluation. It runs the 5 fixed briefs live (no Qloo cache by default) and writes metrics only to `scripts/output/eval-summary.json` (safe to commit). The exit code is non-zero unless every brief passes. `--out` saves full results to the gitignored `.qloo-cache/runs/`.
 - `pnpm model:smoke [provider/model]`: check that a gateway model handles structured output and tool calls. The default free model has no native JSON-schema output, so `generateStructured` uses a forced tool call (`SONDO_STRUCTURED_MODE=tool|output` overrides).
 - TypeScript is pinned to `~6.0` because typescript-eslint doesn't support 7.x yet.

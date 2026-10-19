@@ -8,7 +8,7 @@ Order of investment: **Qloo integration → agent → app plumbing → design �
 | 0 | Oct 15–17 | Research, feasibility, architecture | 7 docs plus a runnable spike ✅. Live spike passed G1–G2 on Oct 17 ✅. |
 | 1 | Oct 17 | Foundations: app shell | Scaffold, design system, marketing and product shells, env validation, test tooling. Lint, typecheck, test and build green. |
 | 1b | Oct 17 | Qloo data layer | Typed Qloo tools tested ✅. Live probe: 12/13 capabilities verified ✅. Neon deferred to Phase 3 (not needed yet). Public repo and deploy await approval. |
-| 2 | Oct 17 | Agent workflow | Agent engine built and tested ✅. Live end-to-end runs on 3 briefs with the free model ✅ (2 completed, 1 partial on the final runs). |
+| 2 | Oct 17–19 | Agent workflow | ✅ Closed Oct 19. Live `pnpm eval` on 5 briefs with the free model: 4/4 completed, brief 5 degraded to an explained partial, 0 invalid citations, 0 unsupported evidence claims, all budgets held (see Phase 2 results). Phase 3 awaits approval. |
 | 3 | Oct 22–24 | App integration | End-to-end in production: brief → live stream → persisted report permalink |
 | 4 | Oct 24–27 | Product design and UX | All pages and states designed. Featured reports look launch-ready. |
 | 5 | Oct 27–28 | Hardening and verification | E2E green. Failure injection handled. Quota protections verified. |
@@ -59,6 +59,31 @@ The remaining items below, minus what Phase 1 already delivered (scaffold, spike
 **Risks:** LLM citations drift (mitigated by the validator and repair); strategies come out generic (mitigated by critique flags and distinct-category rules); latency (parallel explore, skipping deepen under time pressure).
 **Verification:** eval metrics meet PRODUCT.md §8: 0 invalid citations in final output, overlap ≤ 30%, ≤ 40 Qloo / ≤ 6 LLM calls, p50 ≤ 90 s. Brief 5 degrades gracefully. Unit tests for the validator using adversarial synthetic strategies.
 **Done when:** 4 of 5 briefs produce complete validated reports, brief 5 degrades correctly, and all budgets hold.
+
+### Phase 2 results (closed 2026-10-19)
+*As built, the briefs live in `scripts/briefs/` (not `evals/briefs/`). Brief 3 is the fictional sneaker launch in New York City (`sneakers-nyc`), which replaced the London running brand. Brief 4 is Liquid Death in Los Angeles (`liquid-death-la`, no anchors). Brief 5 is a fictional pickle maker in Pierre, South Dakota, with no anchors and no ages (`unknown-brand`). Budgets are the tighter `lib/agent/budget.ts` limits (Qloo 24, model 4, 180 s hard), not the 40/6 above.*
+
+**Final live eval** (`pnpm eval`, live Qloo with no cache, `nvidia/nemotron-3.5-lightning-free`, run sequentially; metrics in `scripts/output/eval-summary.json`):
+
+| Brief | Expect | Status | Concepts grounded | Evidence / hypothesis claims | Citations (invalid) | Mismatches dropped | Max overlap | Qloo | Model | Time |
+|---|---|---|---|---|---|---|---|---|---|---|
+| coldbrew-austin | complete | completed ✅ | 3/3 | 9 / 0 | 27 (0) | 0 | 0.17 | 16/24 | 4/4 | 99 s |
+| hotel-lisbon | complete | completed ✅ | 3/3 | 8 / 1 | 41 (0) | 3 | 0.18 | 17/24 | 4/4 (repair call failed) | 110 s |
+| sneakers-nyc | complete | completed ✅ | 3/3 | 11 / 0 | 27 (0) | 0 | 0.14 | 20/24 | 4/4 | 110 s |
+| liquid-death-la | complete | completed ✅ | 3/3 | 9 / 0 | 30 (0) | 1 | 0.20 | 12/24 | 3/4 (repair call failed) | 95 s |
+| unknown-brand | degrade | partial ✅ | 0/3 (3 partial) | 9 / 0 | 18 (0) | 0 | 0.00 | 9/24 | 4/4 | 75 s |
+
+Totals: 0 invalid citations, 0 mismatched citations left in output, 0 evidence claims without a relevant citation (all re-checked by `lib/agent/eval-metrics.ts` from each run's own ledger), 4 mismatched citations dropped, every budget held, estimated model cost $0 (free model), p50 99 s and max 110 s.
+
+**What changed to get there**
+- Citation relevance (`lib/agent/relevance.ts`, ARCHITECTURE.md §7 rule 8). Mismatched citations are dropped, an evidence claim with no direct or contextual citation is downgraded to a hypothesis, and grounding counts only relevant citations.
+- The first full eval scored 2/4. Hotel-lisbon failed because the strategy call failed on the free model and the retry used up the repair call. It completed on both reruns, so this was model flakiness, not a code fault. Liquid-death-la failed twice for a real reason: the model writes `E#` ids into prose ("(E11)"), and the number rule withheld whole insights as invented statistics. Inline `E#` references are now stripped before validation (regression test added), and the next full eval scored 4/4.
+
+**Known limitations (honest)**
+- The free model is flaky: its repair call failed on 2 of 5 final runs (`AI_ToolChoiceViolationError`). Deterministic fixes still produced validated output, but a single run can come back `partial`. One clean eval run is evidence, not a stability guarantee.
+- p50 latency is 99 s, above PRODUCT.md §8's 90 s target (well within the 180 s hard limit).
+- In the first eval, unknown-brand had a concept overlap of 0.33, above the 0.30 target. The overlap is flagged for repair but not enforced after repair. The final run's overlap was 0.00.
+- Relevance is a deterministic consistency check (names, tags, category words), not fact-checking.
 
 ## Phase 3: App integration (Oct 22–24)
 **Objective:** the full flow works in production with real data, even before the polish.
