@@ -19,11 +19,11 @@ const faqs = [
   },
   {
     q: "Is it free and open source?",
-    a: "The project is open source under the MIT License. This build has no accounts and no billing. The app shell runs without credentials. Live Qloo calls need a hackathon API key, and the agent needs a model key. Both stay on the server.",
+    a: "The project is open source under the MIT License. This build has no accounts and no billing. Live Qloo calls need a hackathon API key and the agent needs a model key. Both stay on the server.",
   },
   {
     q: "Where is this in the hackathon?",
-    a: "Sondo is in development for the Qloo Agentic Hackathon 2026. The app shell, the Qloo data layer and the agent engine are built. The agent runs from the command line. The web flow and the report pages are next.",
+    a: "Sondo is in development for the Qloo Agentic Hackathon 2026. The Qloo data layer, the agent engine, live runs and shareable reports are built. Visual polish and hardening come next.",
   },
 ] as const;
 

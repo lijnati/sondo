@@ -9,12 +9,12 @@ Browser (Next.js App Router, RSC + client islands)
   │  POST /api/runs  (brief)          ← NDJSON event stream (RunEvent)
   ▼
 Run Orchestrator (Node runtime, Fluid Compute, maxDuration 300s)
-  ├─ Budget guard (Qloo ≤40 calls, LLM ≤6 calls, wall clock ≤150s soft / 240s hard)
+  ├─ Budget guard (Qloo ≤24 calls, LLM ≤4 calls, wall clock 120s soft / 180s hard)
   ├─ Qloo Client ──► https://hackathon.api.qloo.com  (GET only, X-Api-Key)
   │     └─ Private cache (Postgres qloo_cache, TTL 7d)
   ├─ LLM (Vercel AI SDK → AI Gateway; structured outputs + typed tools)
-  ├─ Evidence Ledger (in-memory → persisted with run)
-  └─ Persistence (Neon Postgres: runs, qloo_cache)
+  ├─ Evidence Ledger (in-memory → persisted with the report)
+  └─ Persistence (Neon Postgres: runs, run_events, qloo_cache)
   ▼
 /r/[id]  report permalink (server-rendered from stored report)
 ```
@@ -234,42 +234,53 @@ Outcome: if it passes, assemble. If it fails, run `repair` once with the violati
 | Time budget exceeded | Skip optional nodes, then assemble a partial report with a clear notice. |
 | Client disconnects | The run continues to completion via `waitUntil` and persists. `/r/[id]` shows the result. |
 
-## 9. Streaming contract
+## 9. Streaming contract (as built, Phase 3)
+
+**Wire format.** `POST /api/runs` with `{ brief }` and an optional `Idempotency-Key` header returns `application/x-ndjson`: one `{ seq, event }` per line, where `event` is a `PublicRunEvent` (`lib/runs/events.ts`, Zod-validated on both ends). The `x-run-id` header carries the public run id.
 
 ```ts
-type RunEvent =
-  | { t: "run.started"; runId: string; budget: { qloo: number; llm: number } }
-  | { t: "node.started" | "node.finished"; node: NodeName; ms?: number; summary?: string }
-  | { t: "tool.call"; record: ToolCallRecord }              // key-free
-  | { t: "evidence.added"; count: number; category: string }
-  | { t: "plan.ready"; plan: ResearchPlanPublic }          // includes notModeled
-  | { t: "warning"; code: string; message: string }
-  | { t: "run.finished"; runId: string; status: "complete" | "partial" | "failed" };
+type PublicRunEvent =
+  | { t: "run.started"; runId; budget: { qloo; llm } }
+  | { t: "stage"; stage: "planning" | "research" | "critique" | "strategy" | "validation"; phase: "started" | "finished"; step?; ms?; summary? }
+  | { t: "plan"; source; categories; anchors; adjustments }
+  | { t: "qloo"; kind: "search" | "insights" | "tags" | "audiences" | "other"; category?; ok; cached; results; ms }
+  | { t: "evidence"; category; count }
+  | { t: "decision"; proposedBy; tool; target?; outcome; evidenceAdded }
+  | { t: "model"; stage; ok; ms }
+  | { t: "findings"; count } | { t: "claims"; checked; autoCited; downgraded; removed; repaired }
+  | { t: "warning"; message }
+  | { t: "run.finished"; runId; status: StoredRunStatus };
 ```
 
-`POST /api/runs` validates the brief, enforces rate limits, creates the `runs` row and returns `application/x-ndjson`. The client renders events and then routes to `/r/[id]`.
+`toPublicEvent()` (`lib/runs/execute.ts`) maps the agent's internal `RunEvent`s and removes everything private: Qloo params and ids, error strings, token counts and the model's decision reasons. Warnings pass through `publicText()`, which strips secrets and provider error detail. The agent produces no chain-of-thought, so none can be streamed.
 
-## 10. Persistence (justified)
-Neon Postgres is used **only** because three must-haves need it:
-1. Shareable report permalinks.
-2. Featured example reports that load instantly during judging without spending quota.
-3. A private server-side Qloo response cache, which is explicitly allowed and protects quota for 2 weeks of judging.
+**Execution.** `executeRun()` runs the real `runAgent()`, publishes events to the stream and appends them to `run_events` (batched about every second and at each stage boundary), polls `cancel_requested` every 3 s, applies the integrity gate, then writes the final status once. The route hands the run promise to `after()` (Vercel `waitUntil`), with `maxDuration = 300` s against the 180 s agent hard deadline.
 
-It's not used for auth, users or analytics.
+| Situation | Behaviour |
+|---|---|
+| Client disconnects / closes the tab | Stream writes are dropped; the run continues under `after()`, finishes and persists. |
+| Refresh mid-run | After `run.started` the client `replaceState`s to `/r/<id>`. The page server-renders the stored events and polls `GET /api/runs/<id>?after=<seq>` every 2 s. |
+| Stream drops (network) | The client falls back to polling from its last `seq`. |
+| Cancel | `POST /api/runs/<id>/cancel` sets a DB flag; whichever instance runs the agent sees it within ~3 s and aborts. The partial result is stored as `cancelled`. |
+| Hard deadline (180 s) | The agent aborts everything and returns `partial`; it is stored. |
+| Function killed (crash, platform timeout) | The row stays `running`. Any read more than 240 s after start moves it to `interrupted`, which the report page shows with the stored progress. A genuine late result may still replace `interrupted`. |
+| Report fails schema validation on write | Stored as `failed` without a report. A half-written success is never stored. |
 
-```sql
-create table runs (
-  id text primary key, created_at timestamptz default now(),
-  status text not null, brief jsonb not null, plan jsonb, report jsonb, trace jsonb,
-  ip_hash text, featured boolean default false
-);
-create table qloo_cache (
-  key text primary key, path text not null, params jsonb not null,
-  status int not null, body jsonb not null, fetched_at timestamptz default now()
-);
-```
+No in-memory global state is used: the database is the only coordination point between requests and instances.
 
-Rate limits: ≤ 5 new runs per IP-hash per day and a global daily cap (env var). Driver: `@neondatabase/serverless` with plain SQL (no ORM for 2 tables).
+## 10. Persistence (as built, Phase 3)
+Neon Postgres via `@neondatabase/serverless` (HTTP, plain SQL behind a small `Db` interface in `lib/db/sql.ts`; tests run the same SQL on PGlite). It is used for exactly three things: report permalinks and run state, featured reports, and the private Qloo cache. No users, auth or analytics.
+
+Migrations are forward-only and additive (`db/migrations/*.sql`, `pnpm db:migrate`, tracked in `schema_migrations`, each file in one transaction). `0001_runs.sql` creates:
+- `runs`: `id` (12-char base62, random, about 71 bits; the public id and the agent run id; no sequential ids exist), `status` (`running | completed | partial | failed | cancelled | interrupted`), `source` (`web | script`), `brief`, `report`, `usage`, `failure_code`, `ip_hash` (HMAC, never the IP), `idempotency_key` (unique), `cancel_requested`, `featured`, `featured_rank`, timestamps. CHECK constraints: `completed` requires a report; only `completed` runs can be featured.
+- `run_events (run_id, seq, at, event)`, primary key `(run_id, seq)`; replays are ignored.
+- `qloo_cache (key, body, fetched_at)`: 7-day TTL; a cache failure degrades to a miss.
+
+**Status transitions** (`lib/db/runs.ts`) are single conditional statements: `running →` one terminal status; `interrupted →` a final status; nothing else. Every report is parsed by the `StoredReport` Zod schema on write and on read. **Integrity gate** (`lib/runs/integrity.ts`): before storing `completed`, the result is re-checked against its own ledger with `eval-metrics.ts` (0 invalid citations, 0 residual mismatches, 0 unsupported evidence claims, three grounded concepts, budgets held). Any failure is stored as `partial` with the reasons in its warnings.
+
+**Abuse limits** (`lib/runs/limits.ts`, env-configurable): ≤ 5 web runs per IP hash per 24 h, a global daily cap (default 40), ≤ 2 concurrent running runs, a 16 KB body cap and the `SONDO_LIVE_RUNS=off` kill switch. Caps are checked and the row inserted in one transaction holding `pg_advisory_xact_lock`, so parallel submissions can't overshoot. Featured generation (`source = script`) bypasses web caps.
+
+**Report URLs.** `proxy.ts` checks `/r/:id` before rendering: malformed or unknown ids are rewritten to `/r/missing`, which calls `notFound()` before any await, so the response is a real HTTP 404 (a `notFound()` inside a streamed page can only send 200). Non-featured reports are `noindex`; reports are public to anyone with the link, and the brief form says so.
 
 ## 11. Stack decision
 

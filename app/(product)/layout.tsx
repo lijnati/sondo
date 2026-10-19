@@ -1,14 +1,5 @@
-import { ProductNav } from "@/components/shared/product-nav";
-import { SiteFooter } from "@/components/shared/site-footer";
+import { MeadowShell } from "@/components/app/meadow-shell";
 
 export default function ProductLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <ProductNav />
-      <main id="main" className="flex-1">
-        {children}
-      </main>
-      <SiteFooter />
-    </>
-  );
+  return <MeadowShell>{children}</MeadowShell>;
 }

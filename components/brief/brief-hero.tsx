@@ -55,15 +55,15 @@ export function BriefHero() {
           on, then drafts three cited strategies.
         </p>
         <div className="sky-actions reveal" style={{ "--d": "0.65s" } as CSSProperties}>
-          <a className="btn btn-butter" href="#reading">
-            How Sondo reads it <span className="i" aria-hidden="true">→</span>
+          <a className="btn btn-butter" href="#composer">
+            Write your brief <span className="i" aria-hidden="true">→</span>
           </a>
           <a className="btn btn-sheet" href="#examples">
             Featured examples
           </a>
         </div>
         <p className="sky-fine reveal" style={{ "--d": "0.8s" } as CSSProperties}>
-          The composer is not connected yet. Nothing on this page is a live Qloo result.
+          Runs are live: every claim in a report cites a stored Qloo result.
         </p>
       </div>
     </header>

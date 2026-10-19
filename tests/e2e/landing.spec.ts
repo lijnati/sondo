@@ -69,7 +69,7 @@ test("reduced motion shows reveals without scrolling", async ({ page }) => {
   expect(opacities.every((opacity) => opacity === 1)).toBe(true);
 });
 
-test("marketing stays paper-light while product dark mode is unchanged", async ({ page }) => {
+test("marketing, brief and report pages stay paper-light in dark mode", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/");
   const marketingBg = await page.locator(".marketing").evaluate((node) => getComputedStyle(node).backgroundColor);
@@ -79,9 +79,10 @@ test("marketing stays paper-light while product dark mode is unchanged", async (
   const briefBg = await page.locator(".marketing").evaluate((node) => getComputedStyle(node).backgroundColor);
   expect(briefBg).toBe("rgb(255, 255, 255)");
 
+  // Report pages use the same light-only meadow shell (Phase 3).
   await page.goto("/r/does-not-exist");
-  const productBg = await page.locator("body").evaluate((node) => getComputedStyle(node).backgroundColor);
-  expect(productBg).toBe("rgb(11, 11, 12)");
+  const reportBg = await page.locator(".marketing").evaluate((node) => getComputedStyle(node).backgroundColor);
+  expect(reportBg).toBe("rgb(255, 255, 255)");
 });
 
 test("the brief page paints a meadow and keeps its title", async ({ page }) => {
@@ -93,5 +94,5 @@ test("the brief page paints a meadow and keeps its title", async ({ page }) => {
   expect(box?.width ?? 0).toBeGreaterThan(100);
   expect(box?.height ?? 0).toBeGreaterThan(100);
   const seeds = await page.locator("[data-preset]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-seed")));
-  expect(seeds).toEqual(expect.arrayContaining(["11", "28", "31"]));
+  expect(seeds).toEqual(expect.arrayContaining(["11", "31"]));
 });

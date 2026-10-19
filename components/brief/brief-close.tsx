@@ -24,11 +24,11 @@ export function BriefClose() {
           A real brief. Then cited <em>strategies</em>.
         </h2>
         <p className="reveal" style={{ "--d": "0.1s" } as CSSProperties}>
-          Live research connects here next. Until then, this page stays a shell.
+          Each run uses at most 24 Qloo queries and four model calls, and stops within three minutes.
         </p>
         <div className="sky-actions reveal" style={{ "--d": "0.2s" } as CSSProperties}>
-          <a className="btn btn-butter" href="#reading">
-            How Sondo reads it <span className="i" aria-hidden="true">→</span>
+          <a className="btn btn-butter" href="#composer">
+            Write your brief <span className="i" aria-hidden="true">→</span>
           </a>
           <Link href="/" className="btn btn-sheet">
             Back to Sondo

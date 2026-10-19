@@ -9,7 +9,7 @@ Order of investment: **Qloo integration → agent → app plumbing → design �
 | 1 | Oct 17 | Foundations: app shell | Scaffold, design system, marketing and product shells, env validation, test tooling. Lint, typecheck, test and build green. |
 | 1b | Oct 17 | Qloo data layer | Typed Qloo tools tested ✅. Live probe: 12/13 capabilities verified ✅. Neon deferred to Phase 3 (not needed yet). Public repo and deploy await approval. |
 | 2 | Oct 17–19 | Agent workflow | ✅ Closed Oct 19. Live `pnpm eval` on 5 briefs with the free model: 4/4 completed, brief 5 degraded to an explained partial, 0 invalid citations, 0 unsupported evidence claims, all budgets held (see Phase 2 results). Phase 3 awaits approval. |
-| 3 | Oct 22–24 | App integration | End-to-end in production: brief → live stream → persisted report permalink |
+| 3 | Oct 19 | App integration | ✅ Built and verified locally Oct 19 against live Qloo, the live model and Neon: brief → live stream → persisted report permalink, 3 verified featured reports. Production deploy awaits approval (see Phase 3 results). |
 | 4 | Oct 24–27 | Product design and UX | All pages and states designed. Featured reports look launch-ready. |
 | 5 | Oct 27–28 | Hardening and verification | E2E green. Failure injection handled. Quota protections verified. |
 | 6 | Oct 29 | Documentation and submission | Devpost submitted, with the checklist in HACKATHON.md §8 complete |
@@ -98,6 +98,40 @@ Totals: 0 invalid citations, 0 mismatched citations left in output, 0 evidence c
 **Risks:** streaming quirks on Vercel (test on a preview early); a function timeout (the hard 240 s abort is already in place).
 **Verification:** a manual end-to-end on the production URL from a clean browser; reloading mid-run recovers; the permalink renders server-side; the kill switch works.
 **Done when:** a judge-like user can run a new brief and share the permalink in production.
+
+### Phase 3 results (2026-10-19)
+*Authorized and built Oct 19, ahead of the Oct 22–24 slot. Verified locally (`pnpm build && pnpm start`) against live Qloo, the live free model and the project's Neon database. Not yet deployed: that needs approval.*
+
+**What exists**
+- `/new`: a working brief form on the existing `Brief` schema (client and server Zod, plain-English messages shared by both), three one-click example briefs, a live "How Sondo will read this" rail, duplicate-submit protection (disabled button plus `Idempotency-Key`), and rate-limit, paused, unavailable and network-error states.
+- `POST /api/runs` streams NDJSON public events while the real `runAgent()` runs under `after()`. Plus `GET /api/runs/[id]?after=` (resume or poll) and `POST /api/runs/[id]/cancel`. Behaviour on disconnect, refresh, stream loss, cancel, deadline and a killed function is in ARCHITECTURE.md §9.
+- Live research view: stage timeline, research plan, Qloo activity (queries of 24, cached, failed), evidence per category, adaptive decisions and warnings. Everything comes from real events; there are no percentages and no model "thoughts". `aria-live` announces stage changes.
+- `/r/[id]`: a server-rendered stored report. It has status, brief, modeled and not-modeled signals, three concepts, every claim badged Directly supported / Contextual support / Hypothesis, `E#` chips opening an evidence drawer, code-written findings, the evidence ledger, validation counts, limitations, run details and the Qloo trace, and a copy-link share button. Running, partial, failed, cancelled and interrupted states are covered. Unknown or malformed ids return a **real HTTP 404** (`proxy.ts`).
+- Neon: `runs`, `run_events` and `qloo_cache` (additive migration `0001_runs.sql`, applied). Atomic status transitions, an integrity gate before `completed`, rate limits under an advisory lock, a kill switch (`SONDO_LIVE_RUNS=off`) and a private Qloo cache capped at 2 s per operation.
+- Featured reports on `/` and `/new`, read from the database (zero Qloo calls). `pnpm featured` only features runs stored as `completed`.
+
+**Verification**
+- `pnpm typecheck`, `pnpm lint`, `pnpm test` (Vitest, 254 tests including in-process Postgres via PGlite) and `pnpm build`: green.
+- `pnpm e2e` with `E2E_LIVE=1`: 29 passed, 1 skipped (the live test runs on desktop only). This includes real 404 status checks, form validation, the featured report and drawer, no overflow at 375 and 1280, and a **live brief → report run through the UI** (2.5 min, stored `partial`, labelled honestly).
+- `curl`: `/r/zzzzzzzzzzzz`, `/r/does-not-exist` and `/r/missing` return 404; invalid briefs return 400 with field messages.
+- Browser QA at 375 and 1280 using Playwright Chromium screenshots (the Chrome extension disconnected): form, validation errors, example prefill, report, partial report, interrupted run, featured cards and not-found. The meadow theme is light-only by design, so dark mode keeps the light pages (asserted in e2e).
+
+**Featured reports (live, verified `completed`)**
+| Rank | Brief | Run | Evidence | Categories | Attempts |
+|---|---|---|---|---|---|
+| 1 | sneakers-nyc (Stride Loop) | `VTuxwl03jMKD` | 106 | 6 | 2 (first stored `partial`, not featured) |
+| 2 | coldbrew-austin (Oat Hour) | `DseEb2AHvHWh` | 94 | 6 | 3 (two `partial`, not featured) |
+| 3 | hotel-lisbon (Casa Azulejo) | `3KZLO3daGGPB` | 93 | 4 | 1 |
+
+**Live outcomes, honestly:** 9 live runs in total. 4 completed, 4 partial (the free model's concepts were only partly grounded; each is stored and labelled partial with the reason), and 1 interrupted. That one was a web run whose final write hit transient network failures to Neon twice. The fix is backoff on the final write (four attempts over about 6 s, tested) and the 2 s cache cap. Even the 3 featured reports took 6 runs to get. The free model is the main source of partials.
+
+**Known limitations and open items**
+- **Deployment blockers (need approval):** push to GitHub, create the Vercel project, set env vars (`QLOO_API_KEY`, `AI_GATEWAY_API_KEY`, `DATABASE_URL`, `SONDO_IP_HASH_SECRET`, optional caps), set a spending budget on the AI Gateway key, and set the function region to `fra1` to sit next to Neon (eu-central-1). Reports are 0.5–0.8 MB of JSON, and over a WAN link a report read took 2–26 s locally.
+- The free model makes `partial` common (about half of live runs here). A stronger `SONDO_MODEL` is the lever. That is a product decision, not a code change.
+- Report pages ship the whole ledger table. Trimming the payload or paginating it is Phase 4 or 5 work.
+- The evidence drawer, charts (lift and distinctiveness) and the comparison table from DESIGN.md §4.5–4.6 are Phase 4.
+
+**Phase 4 readiness:** ready. The report JSON schema is frozen as the `StoredReport` Zod schema (`lib/db/report-schema.ts`). Every state that Phase 4 designs exists with real data in the database: complete, partial, interrupted, not found and running.
 
 ## Phase 4: Product design and UX (Oct 24–27)
 **Objective:** a complete, coherent, premium product experience (the Design criterion).
