@@ -93,3 +93,29 @@ describe("agent model env", () => {
     expect(() => parseServerEnv({ SONDO_RUN_COST_LIMIT_USD: "50" })).toThrow(/SONDO_RUN_COST_LIMIT_USD/);
   });
 });
+
+describe("run settings", () => {
+  it("defaults to live runs on with conservative caps", () => {
+    const env = parseServerEnv({});
+    expect(env.SONDO_LIVE_RUNS).toBe("on");
+    expect(env.SONDO_RUNS_PER_IP_PER_DAY).toBe(5);
+    expect(env.SONDO_DAILY_RUN_CAP).toBe(40);
+    expect(env.SONDO_MAX_CONCURRENT_RUNS).toBe(2);
+    expect(env.SONDO_IP_HASH_SECRET).toBeUndefined();
+  });
+
+  it("accepts the kill switch and bounded caps", () => {
+    const env = parseServerEnv({ SONDO_LIVE_RUNS: "off", SONDO_DAILY_RUN_CAP: "10", SONDO_MAX_CONCURRENT_RUNS: "3" });
+    expect(env.SONDO_LIVE_RUNS).toBe("off");
+    expect(env.SONDO_DAILY_RUN_CAP).toBe(10);
+    expect(env.SONDO_MAX_CONCURRENT_RUNS).toBe(3);
+  });
+
+  it.each([["SONDO_LIVE_RUNS", "maybe"], ["SONDO_MAX_CONCURRENT_RUNS", "50"], ["SONDO_DAILY_RUN_CAP", "-1"], ["SONDO_IP_HASH_SECRET", "too-short"]])("rejects %s=%s", (k, v) => {
+    expect(() => parseServerEnv({ [k]: v })).toThrow(new RegExp(k));
+  });
+
+  it("never echoes a secret value in errors", () => {
+    expect(() => parseServerEnv({ SONDO_IP_HASH_SECRET: "short-secret-xyz" })).toThrow(expect.objectContaining({ message: expect.not.stringContaining("short-secret-xyz") }));
+  });
+});

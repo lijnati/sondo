@@ -41,6 +41,14 @@ export const ServerEnvSchema = z.object({
   SONDO_MODEL_OUTPUT_USD_PER_MTOK: optionalNumber(z.number().min(0)),
   /** "output" = native JSON-schema output; "tool" = via a forced tool call. Default by model. */
   SONDO_STRUCTURED_MODE: z.preprocess((v) => (v === "" ? undefined : v), z.enum(["output", "tool"]).optional()),
+  // ── Public runs (Phase 3) ──
+  /** HMAC key for hashing client IPs before they are stored. Required for live web runs. */
+  SONDO_IP_HASH_SECRET: optionalSecret.pipe(z.string().min(32, "must be at least 32 characters").optional()),
+  /** Kill switch: "off" = featured reports only, no new runs. */
+  SONDO_LIVE_RUNS: z.preprocess((v) => (v === "" ? undefined : v), z.enum(["on", "off"]).default("on")),
+  SONDO_RUNS_PER_IP_PER_DAY: optionalNumber(z.number().int().min(0).max(100)).transform((v) => v ?? 5),
+  SONDO_DAILY_RUN_CAP: optionalNumber(z.number().int().min(0).max(1000)).transform((v) => v ?? 40),
+  SONDO_MAX_CONCURRENT_RUNS: optionalNumber(z.number().int().min(1).max(10)).transform((v) => v ?? 2),
 });
 
 export type ServerEnv = z.infer<typeof ServerEnvSchema>;

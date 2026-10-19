@@ -14,8 +14,11 @@ test("landing renders the hero and the CTA opens the brief page", async ({ page 
   expect(errors).toEqual([]);
 });
 
-test("an unknown report id shows the designed not-found state", async ({ page }) => {
-  await page.goto("/r/does-not-exist");
+test("unknown and malformed report ids return a real 404 with the designed state", async ({ page }) => {
+  for (const path of ["/r/does-not-exist", "/r/zzzzzzzzzzzz"]) {
+    const res = await page.goto(path);
+    expect(res?.status(), path).toBe(404);
+  }
   await expect(page.getByRole("heading", { name: "Report not found" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Build a cultural brief" })).toBeVisible();
 });

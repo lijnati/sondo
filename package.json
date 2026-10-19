@@ -20,9 +20,12 @@
     "explore": "tsx --env-file-if-exists=.env.local scripts/explore.ts",
     "agent": "tsx --env-file-if-exists=.env.local scripts/agent.ts",
     "model:smoke": "tsx --env-file-if-exists=.env.local scripts/model-smoke.ts",
-    "eval": "tsx --env-file-if-exists=.env.local scripts/eval.ts"
+    "eval": "tsx --env-file-if-exists=.env.local scripts/eval.ts",
+    "db:migrate": "tsx --env-file-if-exists=.env.local scripts/db-migrate.ts",
+    "featured": "tsx --env-file-if-exists=.env.local scripts/featured.ts"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "@radix-ui/react-dialog": "^1.3.1",
     "@radix-ui/react-label": "^2.1.17",
     "@radix-ui/react-slot": "^1.5.0",
@@ -39,6 +42,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
