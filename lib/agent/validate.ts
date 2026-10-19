@@ -2,17 +2,22 @@
  * Deterministic claim validation (ARCHITECTURE.md §7). The model's citations are never
  * trusted: every E# is checked against the ledger, free text is scanned for invented
  * numbers and performance language, entity mentions must be cited, and concepts must be
- * grounded and differentiated. `checkStrategy` reports; `finalizeStrategy` repairs what
- * it can deterministically (auto-cite, downgrade, scrub, drop) and labels the rest.
+ * grounded and differentiated. Each citation must also relate to the text that cites it
+ * (relevance.ts). `checkStrategy` reports; `finalizeStrategy` repairs what it can
+ * deterministically (auto-cite, drop mismatched citations, downgrade, scrub, drop) and
+ * labels the rest.
  */
 import type { Ledger } from "@/lib/evidence/ledger";
 import type { EvidenceId, EvidenceItem } from "@/lib/evidence/types";
 
-import type { CampaignConcept, Claim, CulturalOpportunity, GroundingLevel, StrategyOutput, ValidatedConcept, ValidationSummary } from "./schemas";
+import { buildRelevanceIndex, checkCitations, claimSupport, type CitationCheck, type RelevanceIndex } from "./relevance";
+import type { CampaignConcept, Claim, GroundingLevel, StrategyOutput, ValidatedClaim, ValidatedConcept, ValidatedOpportunity, ValidationSummary } from "./schemas";
 
 export type ViolationCode =
   | "unknown_evidence"
   | "missing_citation"
+  | "citation_mismatch"
+  | "weak_support"
   | "uncited_entity"
   | "numeric"
   | "forbidden_phrase"
@@ -95,6 +100,7 @@ interface LedgerIndex {
   /** Lowercased entity name → E# ids (several when the same name was retrieved more than once). */
   byName: Map<string, { ids: string[]; qlooIds: Set<string>; name: string }>;
   names: string[];
+  rel: RelevanceIndex;
 }
 
 function indexLedger(ledger: Ledger, allowedNumbers: ReadonlySet<string> = NO_NUMBERS): LedgerIndex {
@@ -112,7 +118,7 @@ function indexLedger(ledger: Ledger, allowedNumbers: ReadonlySet<string> = NO_NU
     entry.qlooIds.add(it.entity.qlooId);
     byName.set(key, entry);
   }
-  return { byId, byName, names: [...byName.values()].map((e) => e.name), allowedNumbers };
+  return { byId, byName, names: [...byName.values()].map((e) => e.name), allowedNumbers, rel: buildRelevanceIndex(ledger.all()) };
 }
 
 /** Ledger entities named in the text: unique → their first E#; ambiguous → null. */
@@ -139,12 +145,24 @@ function claimViolations(claim: Claim, path: string, idx: LedgerIndex, out: Viol
     out.push({ code: "missing_citation", path, message: "is marked as evidence but cites no valid E#" });
   }
   for (const v of textViolations(claim.text, idx.names, idx.allowedNumbers)) out.push({ ...v, path });
+  const { checks } = checkCitations(claim.text, valid, idx.rel);
+  mismatchViolations(checks, path, idx, out);
+  if (claim.kind === "evidence" && valid.length > 0 && claimSupport(checks) === "weak") {
+    out.push({ code: "weak_support", path, message: "is marked as evidence, but no citation relates to its text; name the cited item, its category or its theme, cite one that does, or mark it as a hypothesis" });
+  }
   const cited = new Set(valid.map((id) => idx.byId.get(id)?.entity.qlooId));
   for (const m of mentions(claim.text, idx)) {
     const mentionedIds = idx.byName.get(m.name.toLowerCase())?.qlooIds ?? new Set();
     if (![...mentionedIds].some((q) => cited.has(q))) {
       out.push({ code: "uncited_entity", path, message: `mentions "${m.name}" without citing it` });
     }
+  }
+}
+
+function mismatchViolations(checks: readonly CitationCheck[], path: string, idx: LedgerIndex, out: Violation[]) {
+  for (const c of checks) {
+    if (c.level !== "mismatch") continue;
+    out.push({ code: "citation_mismatch", path, message: `cites ${c.evidenceId} (${idx.byId.get(c.evidenceId)?.entity.name ?? "?"}), which does not support it: ${c.reason}` });
   }
 }
 
@@ -167,7 +185,39 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return inter / new Set([...a, ...b]).size;
 }
 
-export function checkStrategy(output: StrategyOutput, ctx: ValidationContext): Violation[] {
+// Evidence ids written into prose ("Santa Monica (E11)", "[E3, E4]"). They are citation
+// references, not statistics, and ids never belong in copy (live: the free model does
+// this, and the number rule then withheld whole insights). Citations live in evidenceIds.
+const INLINE_REF = /\s*[([]?\bE\d{1,4}\b(?:\s*(?:,|;|\/|&|and)\s*E\d{1,4}\b)*[)\]]?/g;
+
+export function stripInlineRefs(text: string): string {
+  return text.replace(INLINE_REF, "").replace(/\s+([.,;:!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
+}
+
+/** The model's strategy with inline E# references removed from every text field. */
+export function withoutInlineRefs(output: StrategyOutput): StrategyOutput {
+  const t = stripInlineRefs;
+  const claim = <C extends Claim>(c: C): C => ({ ...c, text: t(c.text) });
+  return {
+    opportunities: output.opportunities.map((o) => ({ ...o, title: t(o.title), rationale: claim(o.rationale) })),
+    concepts: output.concepts.map((c) => ({
+      ...c,
+      name: t(c.name),
+      positioning: t(c.positioning),
+      intendedAudience: t(c.intendedAudience),
+      concept: t(c.concept),
+      culturalInsight: claim(c.culturalInsight),
+      claims: c.claims.map(claim),
+      opportunities: c.opportunities.map((o) => ({ ...o, idea: t(o.idea) })),
+      channels: c.channels.map(t),
+      assumptions: c.assumptions.map(t),
+      risks: c.risks.map(t),
+    })),
+  };
+}
+
+export function checkStrategy(raw: StrategyOutput, ctx: ValidationContext): Violation[] {
+  const output = withoutInlineRefs(raw);
   const idx = indexLedger(ctx.ledger, ctx.allowedNumbers);
   const out: Violation[] = [];
 
@@ -188,6 +238,7 @@ export function checkStrategy(output: StrategyOutput, ctx: ValidationContext): V
     c.opportunities.forEach((o, j) => {
       const valid = o.evidenceIds.filter((id) => idx.byId.has(id));
       if (valid.length === 0) out.push({ code: "opportunity_without_evidence", path: `${p}.opportunities[${j}]`, message: "proposes a partner or placement with no valid evidence" });
+      mismatchViolations(checkCitations(o.idea, valid, idx.rel).checks, `${p}.opportunities[${j}]`, idx, out);
       freeTextViolations(o.idea, `${p}.opportunities[${j}].idea`, cited, idx, out);
     });
     for (const field of ["name", "positioning", "intendedAudience", "concept"] as const) freeTextViolations(c[field], `${p}.${field}`, cited, idx, out);
@@ -233,15 +284,29 @@ interface Counters {
   downgraded: number;
   removed: number;
   checked: number;
+  mismatched: number;
 }
 
-function fixClaim(claim: Claim, idx: LedgerIndex, n: Counters): Claim | null {
+/** Valid, de-duplicated citations minus those that do not support the text (counted). */
+function relevantIds(text: string, evidenceIds: readonly string[], idx: LedgerIndex, n: Counters): string[] {
+  const ids = [...new Set(evidenceIds.filter((id) => idx.byId.has(id)))];
+  const bad = new Set(checkCitations(text, ids, idx.rel).checks.filter((c) => c.level === "mismatch").map((c) => c.evidenceId));
+  n.mismatched += bad.size;
+  return ids.filter((id) => !bad.has(id));
+}
+
+/** Citations that relate to the text (direct or contextual); "unlinked" ones do not count. */
+function supportedIds(text: string, ids: readonly string[], idx: LedgerIndex): string[] {
+  return checkCitations(text, ids, idx.rel).checks.filter((c) => c.level === "direct" || c.level === "contextual").map((c) => c.evidenceId);
+}
+
+function fixClaim(claim: Claim, idx: LedgerIndex, n: Counters): ValidatedClaim | null {
   n.checked++;
   if (textViolations(claim.text, idx.names, idx.allowedNumbers).length) {
     n.removed++;
     return null;
   }
-  const ids = [...new Set(claim.evidenceIds.filter((id) => idx.byId.has(id)))];
+  const ids = relevantIds(claim.text, claim.evidenceIds, idx, n);
   const cited = new Set(ids.map((id) => idx.byId.get(id)?.entity.qlooId));
   for (const m of mentions(claim.text, idx)) {
     const q = idx.byName.get(m.name.toLowerCase())?.qlooIds ?? new Set();
@@ -250,12 +315,24 @@ function fixClaim(claim: Claim, idx: LedgerIndex, n: Counters): Claim | null {
     cited.add(idx.byId.get(m.id)?.entity.qlooId);
     n.autoAttached++;
   }
+  // Taste themes the text names as themes ("the Architecture taste theme"). Only ledger
+  // items the text itself names are attached, so no support is invented.
+  for (const id of checkCitations(claim.text, ids, idx.rel).suggested) {
+    const q = idx.byId.get(id)?.entity.qlooId;
+    if (cited.has(q)) continue;
+    ids.push(id);
+    cited.add(q);
+    n.autoAttached++;
+  }
+  const evidenceIds = ids.slice(0, 6);
+  const support = claimSupport(checkCitations(claim.text, evidenceIds, idx.rel).checks);
   let kind = claim.kind;
-  if (kind === "evidence" && ids.length === 0) {
+  // An evidence claim needs at least one citation that relates to its text.
+  if (kind === "evidence" && support === "weak") {
     kind = "hypothesis";
     n.downgraded++;
   }
-  return { text: claim.text, kind, evidenceIds: ids.slice(0, 6) };
+  return { text: claim.text, kind, evidenceIds, support };
 }
 
 function grounding(citedIds: string[], cats: Set<string>, insight: Claim): GroundingLevel {
@@ -264,19 +341,20 @@ function grounding(citedIds: string[], cats: Set<string>, insight: Claim): Groun
 }
 
 export function finalizeStrategy(
-  output: StrategyOutput,
+  raw: StrategyOutput,
   ctx: ValidationContext,
-): { concepts: ValidatedConcept[]; opportunities: CulturalOpportunity[]; summary: Omit<ValidationSummary, "repairAttempted"> } {
+): { concepts: ValidatedConcept[]; opportunities: ValidatedOpportunity[]; summary: Omit<ValidationSummary, "repairAttempted"> } {
+  const output = withoutInlineRefs(raw);
   const idx = indexLedger(ctx.ledger, ctx.allowedNumbers);
   const violations = checkStrategy(output, ctx).map((v) => `${v.path}: ${v.message}`);
-  const n: Counters = { autoAttached: 0, downgraded: 0, removed: 0, checked: 0 };
+  const n: Counters = { autoAttached: 0, downgraded: 0, removed: 0, checked: 0, mismatched: 0 };
   const cleanText = (t: string) => {
     const s = scrub(t, idx.names, idx.allowedNumbers);
     if (s !== t.trim()) n.removed++;
     return s;
   };
 
-  const opportunities: CulturalOpportunity[] = output.opportunities.flatMap((o) => {
+  const opportunities: ValidatedOpportunity[] = output.opportunities.flatMap((o) => {
     const rationale = fixClaim(o.rationale, idx, n);
     if (!rationale) return [];
     const title = cleanText(o.title);
@@ -288,21 +366,21 @@ export function finalizeStrategy(
     const notes: string[] = [];
     let culturalInsight = fixClaim(c.culturalInsight, idx, n);
     if (!culturalInsight) {
-      culturalInsight = { text: REMOVED_INSIGHT, kind: "hypothesis", evidenceIds: [] };
+      culturalInsight = { text: REMOVED_INSIGHT, kind: "hypothesis", evidenceIds: [], support: "weak" };
       notes.push("Cultural insight removed by validation.");
     }
-    const claims = c.claims.map((cl) => fixClaim(cl, idx, n)).filter((cl): cl is Claim => cl !== null);
+    const claims = c.claims.map((cl) => fixClaim(cl, idx, n)).filter((cl): cl is ValidatedClaim => cl !== null);
     const opps = c.opportunities.flatMap((o) => {
-      const ids = [...new Set(o.evidenceIds.filter((id) => idx.byId.has(id)))];
       const idea = cleanText(o.idea);
+      const ids = relevantIds(idea, o.evidenceIds, idx, n);
       if (ids.length === 0 || !idea) {
         n.removed++;
         notes.push(`Dropped an unsupported ${o.kind} idea.`);
         return [];
       }
-      return [{ kind: o.kind, idea, evidenceIds: ids }];
+      return [{ kind: o.kind, idea, evidenceIds: ids, support: claimSupport(checkCitations(idea, ids, idx.rel).checks) }];
     });
-    const fixed: CampaignConcept = {
+    const fixed = {
       ...c,
       name: cleanText(c.name) || c.angle.replace(/_/g, " "),
       positioning: cleanText(c.positioning),
@@ -328,7 +406,11 @@ export function finalizeStrategy(
         }
       }
     }
-    const allIds = [...new Set([...citedIds, ...textCitations])];
+    // Grounding counts only citations that relate to the text citing them.
+    const supported = [fixed.culturalInsight, ...fixed.claims]
+      .flatMap((cl) => supportedIds(cl.text, cl.evidenceIds, idx))
+      .concat(fixed.opportunities.flatMap((o) => supportedIds(o.idea, o.evidenceIds, idx)));
+    const allIds = [...new Set([...supported, ...textCitations])];
     const cats = new Set(allIds.map((id) => category(idx.byId.get(id) as EvidenceItem)));
     const level = grounding(allIds, cats, culturalInsight);
     if (level !== "grounded") notes.push(level === "partial" ? "Partially grounded: treat as a hypothesis to validate." : "Not grounded in retrieved evidence.");
@@ -343,6 +425,7 @@ export function finalizeStrategy(
       citationsAutoAttached: n.autoAttached,
       downgradedToHypothesis: n.downgraded,
       removed: n.removed,
+      mismatchedCitations: n.mismatched,
       violations,
     },
   };
