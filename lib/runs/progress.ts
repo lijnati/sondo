@@ -20,6 +20,8 @@ export interface RunSummary {
   stages: StageView[];
   plan?: Extract<PublicRunEvent, { t: "plan" }>;
   qloo: { calls: number; cached: number; failed: number; budget: number };
+  /** The most recent Qloo calls, newest first (public fields only). */
+  recentQloo: (Omit<Extract<PublicRunEvent, { t: "qloo" }>, "t"> & { seq: number })[];
   model: { calls: number; failed: number; budget: number };
   evidence: { total: number; byCategory: { category: string; count: number }[] };
   decisions: Extract<PublicRunEvent, { t: "decision" }>[];
@@ -28,6 +30,8 @@ export interface RunSummary {
   warnings: string[];
   finished: StoredRunStatus | null;
 }
+
+const RECENT_QLOO = 12;
 
 export function summarizeRun(events: readonly SequencedEvent[]): RunSummary {
   const open = new Map<Stage, string[]>();
@@ -40,6 +44,7 @@ export function summarizeRun(events: readonly SequencedEvent[]): RunSummary {
     lastSeq: -1,
     stages: [],
     qloo: { calls: 0, cached: 0, failed: 0, budget: 0 },
+    recentQloo: [],
     model: { calls: 0, failed: 0, budget: 0 },
     evidence: { total: 0, byCategory: [] },
     decisions: [],
@@ -74,11 +79,14 @@ export function summarizeRun(events: readonly SequencedEvent[]): RunSummary {
       case "plan":
         out.plan = e;
         break;
-      case "qloo":
+      case "qloo": {
         out.qloo.calls++;
+        out.recentQloo.unshift({ seq, kind: e.kind, ...(e.category ? { category: e.category } : {}), ok: e.ok, cached: e.cached, results: e.results, ms: e.ms });
+        if (out.recentQloo.length > RECENT_QLOO) out.recentQloo.pop();
         if (e.cached) out.qloo.cached++;
         if (!e.ok) out.qloo.failed++;
         break;
+      }
       case "evidence":
         evidence.set(e.category, (evidence.get(e.category) ?? 0) + e.count);
         break;

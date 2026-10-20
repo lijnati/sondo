@@ -19,7 +19,7 @@ type PixelSceneProps = {
   preset: PixelPreset;
   seed: number;
   sky?: readonly string[];
-  shade?: "hero" | "dusk" | "soft";
+  shade?: "hero" | "dusk" | "soft" | "cover";
   pollen?: boolean;
   pollenMax?: number;
   pollenColor?: string;

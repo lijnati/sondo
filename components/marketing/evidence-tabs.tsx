@@ -1,22 +1,32 @@
 "use client";
 
 import type { CSSProperties, KeyboardEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
+
+import { categoryLabel } from "@/lib/brief/labels";
+import type { FeaturedExcerpt } from "@/lib/db/runs";
 
 const tabs = [
   { id: "strategists", label: "For strategists", panel: "panel-strategists" },
   { id: "judges", label: "For judges", panel: "panel-judges" },
 ] as const;
 
-export function EvidenceTabs() {
+const ANGLE: Record<string, string> = {
+  mainstream_anchor: "Mainstream anchor",
+  distinctive_niche: "Distinctive niche",
+  cross_category_bridge: "Cross-category bridge",
+};
+
+const TIER: Record<string, { cls: string; label: string }> = {
+  direct: { cls: "direct", label: "Directly supported" },
+  contextual: { cls: "contextual", label: "Contextual support" },
+};
+
+/** Landing: what a claim and its evidence look like, using a real featured report. */
+export function EvidenceTabs({ excerpt }: { excerpt: FeaturedExcerpt | null }) {
   const [selected, setSelected] = useState(0);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  useEffect(() => {
-    const panel = document.getElementById(tabs[selected]?.panel ?? "");
-    panel?.querySelectorAll<HTMLElement>(".reveal").forEach((node) => node.classList.add("is-in"));
-  }, [selected]);
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
@@ -34,7 +44,7 @@ export function EvidenceTabs() {
             <h2 id="evidence-title" className="h2 reveal">
               Evidence, not vibes. Every claim has a <em>source</em>.
             </h2>
-            <div className="tabs reveal" role="tablist" aria-label="Who it is for" style={{ "--d": "0.12s" } as CSSProperties}>
+            <div className="tabs" role="tablist" aria-label="Who it is for">
               {tabs.map((tab, index) => (
                 <button
                   key={tab.id}
@@ -57,23 +67,17 @@ export function EvidenceTabs() {
             </div>
           </div>
           <p className="reveal" style={{ "--d": "0.1s" } as CSSProperties}>
-            A strategy is a hypothesis with the Qloo result that suggested it, and a way to test it. The card
-            below is an illustration, not a live result.
+            A concept is a hypothesis with the Qloo results that suggested it, and a way to test it. The card below is
+            copied from a stored report, not drawn for this page.
           </p>
         </div>
 
-        <div
-          className="split-2"
-          role="tabpanel"
-          id="panel-strategists"
-          aria-labelledby="tab-strategists"
-          hidden={selected !== 0}
-        >
+        <div className="split-2" role="tabpanel" id="panel-strategists" aria-labelledby="tab-strategists" hidden={selected !== 0}>
           <div>
             <h3 className="h3big">Three directions. Each one cited.</h3>
             <p className="muted" style={{ marginTop: 14, maxWidth: "40ch" }}>
-              The brief stays in charge. Sondo researches your audience against a market baseline, then drafts
-              three different angles.
+              The brief stays in charge. Sondo researches your audience against a market baseline, then drafts three
+              different angles.
             </p>
             <ol className="steps">
               <li>
@@ -86,15 +90,15 @@ export function EvidenceTabs() {
               <li>
                 <span className="num">2</span>
                 <div>
-                  <b>Read the finding</b>
-                  <span className="s">Each finding carries the evidence ids it came from.</span>
+                  <b>Read the evidence</b>
+                  <span className="s">Each claim carries the Qloo results it came from.</span>
                 </div>
               </li>
               <li>
                 <span className="num">3</span>
                 <div>
                   <b>Test the idea</b>
-                  <span className="s">How to validate is part of the strategy, not a promise it will work.</span>
+                  <span className="s">Assumptions and risks are part of every concept, not a promise it will work.</span>
                 </div>
               </li>
             </ol>
@@ -102,21 +106,15 @@ export function EvidenceTabs() {
               Build a cultural brief <span className="i" aria-hidden="true">→</span>
             </Link>
           </div>
-          <StrategyMock />
+          {excerpt ? <ConceptExcerpt excerpt={excerpt} /> : <ExcerptUnavailable />}
         </div>
 
-        <div
-          className="split-2"
-          role="tabpanel"
-          id="panel-judges"
-          aria-labelledby="tab-judges"
-          hidden={selected !== 1}
-        >
+        <div className="split-2" role="tabpanel" id="panel-judges" aria-labelledby="tab-judges" hidden={selected !== 1}>
           <div>
             <h3 className="h3big">Ids you can check. Limits written down.</h3>
             <p className="muted" style={{ marginTop: 14, maxWidth: "40ch" }}>
-              Built for the Qloo Agentic Hackathon 2026. The agent cites ledger ids. It does not invent scores,
-              and it does not predict ROI.
+              Built for the Qloo Agentic Hackathon 2026. The agent cites ledger ids. It does not invent scores, and it
+              does not predict ROI.
             </p>
             <ol className="steps">
               <li>
@@ -130,7 +128,7 @@ export function EvidenceTabs() {
                 <span className="num">2</span>
                 <div>
                   <b>Follow an evidence id</b>
-                  <span className="s">E# marks a Qloo result from that run. F# marks a finding that cites them.</span>
+                  <span className="s">E# marks a Qloo result from that run, with its rank inside its own query.</span>
                 </div>
               </li>
               <li>
@@ -145,89 +143,62 @@ export function EvidenceTabs() {
               What Sondo isn&apos;t <span className="i" aria-hidden="true">→</span>
             </a>
           </div>
-          <LedgerMock />
+          {excerpt ? <LedgerExcerpt excerpt={excerpt} /> : <ExcerptUnavailable />}
         </div>
       </div>
     </section>
   );
 }
 
-function StrategyMock() {
+function ConceptExcerpt({ excerpt: x }: { excerpt: FeaturedExcerpt }) {
+  const ins = x.concept.culturalInsight;
+  const tier = ins.kind === "evidence" && ins.support ? TIER[ins.support] : undefined;
   return (
-    <div className="panel reveal" style={{ "--d": "0.15s" } as CSSProperties}>
-      <p className="example-flag">Illustrative example. Not a Qloo result.</p>
+    <div className="panel">
+      <p className="example-flag">
+        From the featured {x.brandName} report · {x.market}
+      </p>
       <div className="mock">
         <div className="mock-top">
           <span className="mock-ico" aria-hidden="true">
             ◇
           </span>
           <div>
-            <b>Strategy 2</b>
-            <div className="mono">Niche distinctiveness · example</div>
+            <b>{x.concept.name}</b>
+            <div className="mono">{ANGLE[x.concept.angle] ?? x.concept.angle}</div>
           </div>
         </div>
         <div className="mock-body">
-          <div className="row">
-            <span className="chip">Illustrative example</span>
-            <span className="mono">F2</span>
-          </div>
-          <div className="mock-title">A niche live-music territory.</div>
-          <div className="row">
-            <div className="row" style={{ gap: 10 }}>
-              <span className="avatar">Ex</span>
-              <div>
-                <b>Example audience</b>
-                <div className="mono">Age, gender, locality</div>
-              </div>
-            </div>
-            <span className="mono">Sample brief</span>
-          </div>
-          <div className="file">
-            <span aria-hidden="true">▤</span>
-            <div style={{ flex: 1 }}>
-              <b>Finding F2 cites E14 and E31</b>
-              <div className="mono">Placeholder ids, not a live ledger</div>
-            </div>
-          </div>
-          <div className="cols">
-            <div>
-              <b>Audience lift vs baseline</b>
-              <p className="muted" style={{ marginTop: 6 }}>
-                Example rank 4 with the audience. Example rank 18 on the market baseline.
-              </p>
-            </div>
-            <div>
-              <b>How to validate</b>
-              <p className="muted" style={{ marginTop: 6 }}>
-                Try one placement before you scale it. A hypothesis, not a forecast.
-              </p>
-            </div>
-          </div>
-          <div className="note-mint">
-            <b>Every claim cited</b>
-            <div className="mono" style={{ marginTop: 3 }}>
-              Sondo heuristic · sample only
+          <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>
+            {x.concept.positioning}
+          </p>
+          <div className={`claim-card tier-${tier?.cls ?? "hypothesis"}`}>
+            <p className="claim">{ins.text}</p>
+            <div className="claim-meta">
+              <span className={`support support-${tier?.cls ?? "hypothesis"}`}>{tier?.label ?? "Hypothesis"}</span>
+              {x.cited.map((c) => (
+                <span key={c.id} className="ev ev-static">
+                  {c.id}
+                  <span className="ev-name">{c.name}</span>
+                </span>
+              ))}
             </div>
           </div>
         </div>
         <div className="mock-foot">
-          <a className="btn btn-sm btn-outline" href="#how-it-works">
-            How it works
-          </a>
-          <Link href="/new" className="btn btn-sm btn-ink">
-            Build a cultural brief
+          <Link href={`/r/${x.id}#concepts`} className="btn btn-sm btn-ink">
+            Open the full report <span className="i" aria-hidden="true">→</span>
           </Link>
         </div>
       </div>
-      <p className="example-note">Previews use example data.</p>
     </div>
   );
 }
 
-function LedgerMock() {
+function LedgerExcerpt({ excerpt: x }: { excerpt: FeaturedExcerpt }) {
   return (
     <div className="panel mint">
-      <p className="example-flag">Illustrative example. Not a Qloo result.</p>
+      <p className="example-flag">Ledger rows behind that claim · {x.brandName} report</p>
       <div className="mock">
         <div className="mock-top">
           <span className="mock-ico" aria-hidden="true" style={{ background: "var(--mint)" }}>
@@ -235,37 +206,46 @@ function LedgerMock() {
           </span>
           <div>
             <b>Evidence ledger</b>
-            <div className="mono">Example rows · not from a run</div>
+            <div className="mono">Rank is within its own Qloo query</div>
           </div>
         </div>
         <div className="mock-body">
-          <div className="row">
-            <span className="chip">Illustrative example</span>
-            <span className="mono">Sample</span>
-          </div>
-          <div className="file">
-            <span className="mono">E14</span>
-            <div style={{ flex: 1 }}>
-              <b>Sample result</b>
-              <div className="mono">Example rank 4 · audience query</div>
-            </div>
-          </div>
-          <div className="file">
-            <span className="mono">E31</span>
-            <div style={{ flex: 1 }}>
-              <b>Sample result</b>
-              <div className="mono">Example rank 18 · market baseline</div>
-            </div>
-          </div>
-          <div className="note-mint">
-            <b>Every claim cited</b>
-            <div className="mono" style={{ marginTop: 3 }}>
-              Real reports use ids from that run only
-            </div>
-          </div>
+          {x.cited.length ? (
+            x.cited.map((c) => (
+              <div key={c.id} className="file">
+                <span className="mono" style={{ color: "var(--accent-deep)" }}>
+                  {c.id}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <b>{c.name}</b>
+                  <div className="mono">
+                    {categoryLabel(c.filterType)} · rank {c.rank} of {c.of}
+                    {c.lift && c.lift > 0 ? ` · ▲${c.lift} vs baseline (heuristic)` : ""}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="muted">This insight is a hypothesis, so it cites no ledger rows.</p>
+          )}
+        </div>
+        <div className="mock-foot">
+          <Link href={`/r/${x.id}#evidence`} className="btn btn-sm btn-outline">
+            See the whole ledger
+          </Link>
         </div>
       </div>
-      <p className="example-note">Previews use example data.</p>
+    </div>
+  );
+}
+
+function ExcerptUnavailable() {
+  return (
+    <div className="empty-card ruled">
+      <p className="mono">Featured report unavailable</p>
+      <p className="muted" style={{ marginTop: 10 }}>
+        The report store couldn&apos;t be reached, so there is no excerpt to show. This page will not draw a fake one.
+      </p>
     </div>
   );
 }

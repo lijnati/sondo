@@ -1,0 +1,582 @@
+/*
+ * Pixel Meadow base: tokens, type, controls and motion shared by every page.
+ * Tokens live on `.marketing` (the shell root, see components/app/meadow-shell.tsx).
+ * The meadow is light-only by design ("paper"). Page CSS uses tokens only, so a colour
+ * changes in exactly one place. The pixel art keeps its own palette.
+ *
+ * Contrast (WCAG): ink-soft and ink-faint on paper/sheet ≥ 4.5:1;
+ * accent on sheet ≥ 4.5:1; butter-ink on butter ≥ 9:1.
+ */
+
+.marketing {
+  --paper: #f7f9f5;
+  --paper-deep: #eaf0e8;
+  --sheet: #fffefa;
+  --bg: #ffffff;
+  --field: #ffffff;
+  --ink: #183d32;
+  --ink-soft: #53665d;
+  --ink-faint: #5c7067;
+  --rule: #dce4da;
+  --rule-strong: #bdcabe;
+  --accent: #21634e;
+  --accent-deep: #164c3b;
+  --accent-soft: #e4eee4;
+  --on-accent: #ffffff;
+  --sky: #087eb2;
+  --butter: #ffe46b;
+  --butter-hover: #fff09c;
+  --butter-ink: #313712;
+  --mint: #e8f1e5;
+  --cream: #fcf0c9;
+  --ice: #e7f0f6;
+  --ice-2: #edf5fa;
+  --sage: #e5f0ea;
+  --warn-ink: #5c4304;
+  --warn-rule: #d8b75a;
+  --bad: #fbe9e4;
+  --bad-ink: #6b2111;
+  --danger: #b42318;
+  --overlay: rgba(14, 36, 32, 0.32);
+  --shadow: 0 30px 60px -30px rgba(24, 61, 50, 0.25);
+  --shadow-soft: 0 1px 2px rgba(23, 23, 20, 0.04);
+  --hover-tint: rgba(24, 61, 50, 0.08);
+
+  /* Evidence tiers (DESIGN.md §2): direct, contextual, hypothesis / creative. */
+  --tier-direct: var(--accent);
+  --tier-contextual: #6fa58c;
+  --tier-hypothesis: var(--warn-rule);
+
+  --font-dm: var(--font-dm-sans), "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument), "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --container: 1160px;
+  --inset: 20px;
+
+  display: flex;
+  min-height: 100dvh;
+  flex: 1;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--ink);
+  color-scheme: light;
+  font-family: var(--font-dm);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.marketing main {
+  flex: 1;
+}
+
+.marketing :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.marketing .sky-hero :focus-visible,
+.marketing .final :focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(24, 61, 50, 0.9);
+}
+
+.marketing a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.marketing em {
+  font-family: var(--font-serif);
+  font-size: 1.08em;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.marketing ::selection {
+  background: var(--butter);
+  color: var(--butter-ink);
+}
+
+.marketing .m-container {
+  width: min(var(--container), calc(100% - 50px));
+  margin-inline: auto;
+}
+
+.marketing .muted {
+  color: var(--ink-soft);
+}
+
+.marketing .mono {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+}
+
+.marketing .tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.marketing .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- type ---------- */
+.marketing .eyebrow {
+  margin-bottom: 8px;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.marketing .h2 {
+  font-size: clamp(34px, 3.6vw, 47px);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.marketing .h3 {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.marketing .lede {
+  color: var(--ink-soft);
+  line-height: 1.75;
+  text-wrap: pretty;
+}
+
+.marketing .stack-sm > * + * {
+  margin-top: 8px;
+}
+
+.marketing .stack > * + * {
+  margin-top: 16px;
+}
+
+/* ---------- buttons ---------- */
+.marketing .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 49px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.25s,
+    color 0.25s,
+    transform 0.4s var(--ease),
+    box-shadow 0.4s var(--ease);
+}
+
+.marketing .btn:active {
+  transform: scale(0.98);
+}
+
+.marketing .btn-butter {
+  background: var(--butter);
+  color: var(--butter-ink);
+  box-shadow: 0 3px 10px rgba(41, 55, 18, 0.06);
+}
+
+.marketing .btn-butter:hover {
+  background: var(--butter-hover);
+  color: var(--butter-ink);
+  transform: translateY(-1px);
+}
+
+/* On art the sheet button stays light. */
+.marketing .btn-sheet {
+  background: #fffefa;
+  color: #183d32;
+  box-shadow: var(--shadow-soft);
+}
+
+.marketing .btn-sheet:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.marketing .btn-ink {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.marketing .btn-ink:hover {
+  background: var(--accent-deep);
+}
+
+.marketing .btn-outline {
+  background: var(--field);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--rule-strong);
+}
+
+.marketing .btn-outline:hover {
+  background: var(--paper);
+}
+
+.marketing .btn-sm {
+  min-height: 39px;
+  gap: 8px;
+  padding: 0 16px;
+  font-size: 12.5px;
+}
+
+.marketing .btn[disabled],
+.marketing .btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.marketing .btn .i {
+  display: inline-block;
+  transition: transform 0.4s var(--ease);
+}
+
+.marketing .btn:hover .i {
+  transform: translateX(3px);
+}
+
+.marketing .btn:hover .i-ne {
+  transform: translate(2px, -2px);
+}
+
+.marketing .text-link {
+  font-size: 13px;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 5px;
+  transition: text-decoration-color 0.2s;
+}
+
+.marketing .text-link:hover {
+  text-decoration-color: currentColor;
+}
+
+/* ---------- surfaces ---------- */
+.marketing .sheet {
+  padding: 24px;
+  background: var(--sheet);
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+.marketing .sheet + .sheet {
+  margin-top: 16px;
+}
+
+.marketing .notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+  background: var(--ice-2);
+  border-radius: 12px;
+}
+
+.marketing .notice.warn {
+  background: var(--cream);
+  color: var(--warn-ink);
+}
+
+.marketing .notice.bad {
+  background: var(--bad);
+  color: var(--bad-ink);
+}
+
+.marketing .notice.good {
+  background: var(--mint);
+}
+
+.marketing .notice strong {
+  font-weight: 650;
+}
+
+.marketing .empty-card {
+  padding: 28px 30px;
+  background: var(--sheet);
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+.marketing .empty-card.ruled {
+  background: transparent;
+  box-shadow: none;
+  outline: 1px dashed var(--rule-strong);
+  outline-offset: -1px;
+}
+
+/* ---------- chips, pills, status ---------- */
+.marketing .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.marketing .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  color: var(--ink);
+  font-size: 12.5px;
+  background: var(--paper);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+.marketing .pill.muted-pill {
+  color: var(--ink-faint);
+  background: transparent;
+  text-decoration: line-through;
+  text-decoration-color: var(--rule-strong);
+}
+
+.marketing .status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+.marketing .status::before {
+  width: 7px;
+  height: 7px;
+  background: currentColor;
+  border-radius: 2px;
+  content: "";
+}
+
+.marketing .status-completed {
+  color: var(--accent-deep);
+  background: var(--mint);
+}
+
+.marketing .status-partial,
+.marketing .status-interrupted,
+.marketing .status-running {
+  color: var(--warn-ink);
+  background: var(--cream);
+}
+
+.marketing .status-running::before {
+  animation: live 1.6s infinite;
+}
+
+.marketing .status-failed,
+.marketing .status-cancelled {
+  color: var(--bad-ink);
+  background: var(--bad);
+}
+
+/* ---------- disclosure ---------- */
+.marketing .disclosure > summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+
+.marketing .disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.marketing .disclosure > summary::after {
+  margin-left: 8px;
+  color: var(--ink-faint);
+  content: "+";
+}
+
+.marketing .disclosure[open] > summary::after {
+  content: "−";
+}
+
+/* ---------- skeleton ---------- */
+.marketing .skel {
+  background: linear-gradient(90deg, var(--paper) 25%, var(--paper-deep) 37%, var(--paper) 63%);
+  background-size: 400% 100%;
+  border-radius: 10px;
+  animation: skel 1.4s ease infinite;
+}
+
+/* ---------- motion ----------
+ * CSS only: no script touches server-rendered nodes, so hydration always matches.
+ * Hero words and reveals play once on load; section reveals follow the scroll where
+ * the browser supports scroll-driven animations, and simply show everywhere else.
+ */
+.marketing .split .w {
+  display: inline-block;
+  margin-right: 0.27em;
+  animation: word-in 1s var(--ease) both;
+  animation-delay: calc(var(--i) * 70ms + 150ms);
+}
+
+.marketing .split .w:last-child {
+  margin-right: 0;
+}
+
+.marketing .reveal {
+  animation: reveal-in 1.1s var(--ease) both;
+  animation-delay: var(--d, 0s);
+}
+
+@supports (animation-timeline: view()) {
+  .marketing .block .reveal,
+  .marketing .final .reveal {
+    animation: reveal-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 70%;
+    animation-delay: 0s;
+  }
+}
+
+@keyframes word-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(40%);
+  }
+}
+
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(24px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes live {
+  50% {
+    box-shadow: 0 0 0 5px rgba(216, 183, 90, 0.25);
+  }
+}
+
+@keyframes skel {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (max-width: 640px) {
+  .marketing {
+    --inset: 10px;
+  }
+
+  .marketing .m-container {
+    width: min(var(--container), calc(100% - 32px));
+  }
+
+  .marketing .btn {
+    min-height: 44px;
+    padding: 0 18px;
+    font-size: 13px;
+  }
+
+  .marketing .btn-sm {
+    min-height: 39px;
+  }
+
+  .marketing .sheet {
+    padding: 18px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing *,
+  .marketing *::before,
+  .marketing *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html:has(.marketing) {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.marketing) {
+    scroll-behavior: auto;
+  }
+}
+
+/* ---------- full-page states (404, error, no report) ---------- */
+.marketing .page-state {
+  max-width: 720px;
+  padding: 72px 0 96px;
+}
+
+.marketing .page-state-title {
+  font-size: clamp(36px, 5vw, 52px);
+  font-weight: 650;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.marketing .page-state-body {
+  margin-top: 16px;
+}
+
+.marketing .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 24px;
+}

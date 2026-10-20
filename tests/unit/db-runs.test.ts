@@ -11,6 +11,7 @@ import { parseStoredReport } from "@/lib/db/report-schema";
 import {
   appendEvents,
   createRun,
+  featuredExcerpt,
   finishRun,
   getRun,
   isCancelRequested,
@@ -211,6 +212,30 @@ describe("featured", () => {
     expect(cards).toHaveLength(1);
     expect(cards[0]).toMatchObject({ id: a.id, brandName: "Fixture Footwear", market: "New York City", evidenceCount: completed.evidence.length });
     expect(cards[0]?.concepts).toHaveLength(3);
+    const signal = completed.findings.filter((f) => ["audience_lift", "distinctive", "affinity", "intersection", "theme"].includes(f.kind));
+    const lead = signal.find((f) => f.strength === "strong") ?? signal.find((f) => f.strength === "moderate");
+    expect(cards[0]?.topFinding ?? null).toBe(lead?.statement ?? null);
+  });
+
+  it("reads a small landing excerpt from the top featured report, straight from its ledger", async () => {
+    expect(await featuredExcerpt(db)).toBeNull();
+    const a = await create({ ipHash: null, source: "script" });
+    if (a.kind !== "created") throw new Error("not created");
+    await finishRun(db, a.id, { status: "completed", report: { ...completed, runId: a.id } });
+    await setFeatured(db, a.id, 1);
+    const ex = await featuredExcerpt(db);
+    expect(ex).not.toBeNull();
+    expect(ex!.brandName).toBe("Fixture Footwear");
+    const concept = completed.concepts.find((c) => c.name === ex!.concept.name);
+    expect(concept).toBeDefined();
+    expect(ex!.cited.map((c) => c.id)).toEqual(concept!.culturalInsight.evidenceIds.slice(0, 4));
+    for (const c of ex!.cited) {
+      const item = completed.evidence.find((e) => e.id === c.id)!;
+      expect(c).toMatchObject({ name: item.entity.name, rank: item.rank, of: item.of });
+    }
+    const movers = completed.evidence.filter((e) => e.query.variant === "target" && e.entity.kind === "entity" && !e.derived?.newInTarget && (e.derived?.lift ?? 0) > 0);
+    const best = Math.max(0, ...movers.map((e) => e.derived!.lift!));
+    expect(ex!.topLift?.lift ?? 0).toBe(best);
   });
 });
 

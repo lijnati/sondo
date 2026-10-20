@@ -17,7 +17,7 @@ export default function GlobalError({ error, retry }: { error: unknown; retry: (
           <button
             type="button"
             onClick={() => retry()}
-            className="h-10 rounded-sm bg-ink px-4 font-medium text-bg hover:bg-ink/85"
+            className="h-10 rounded-full bg-ink px-5 font-medium text-bg hover:opacity-90"
           >
             Try again
           </button>

@@ -4,15 +4,15 @@ import { FeaturedReports, FeaturedSkeleton } from "@/components/app/featured-rep
 
 export function ExamplesPanel() {
   return (
-    <section className="block" id="examples" aria-labelledby="examples-title" style={{ paddingTop: 0 }}>
+    <section className="block" id="examples" aria-labelledby="examples-title">
       <div className="m-container">
         <div className="head">
           <h2 id="examples-title" className="h2">
             Featured <em>reports</em>.
           </h2>
           <p>
-            Finished runs of the example briefs below, stored so they open instantly. Use one of them as a starting
-            point in the form.
+            Finished runs of the three example briefs, stored so they open instantly. Load the same brief in the form
+            above to run it again.
           </p>
         </div>
         <Suspense fallback={<FeaturedSkeleton />}>

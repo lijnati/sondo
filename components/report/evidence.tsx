@@ -53,15 +53,22 @@ export function EvidenceProvider({ items, children }: { items: EvidenceView[]; c
           <Dialog.Content className="drawer" aria-describedby={undefined}>
             {item ? (
               <>
-                <p className="eyebrow">
-                  Evidence {item.id} · {item.category}
+                <div className="drawer-head">
+                  <p className="eyebrow">
+                    Evidence <span className="drawer-id">{item.id}</span> · {item.category}
+                  </p>
+                  <Dialog.Close className="drawer-x" aria-label="Close">
+                    ×
+                  </Dialog.Close>
+                </div>
+                <Dialog.Title className="drawer-title">{item.name}</Dialog.Title>
+                <div className="rank-meter" aria-hidden="true">
+                  <span className="rank-meter-fill" style={{ width: `${((item.of - item.rank + 1) / item.of) * 100}%` }} />
+                </div>
+                <p className="rank-meter-cap tabular">
+                  #{item.rank} of {item.of} in this Qloo query
                 </p>
-                <Dialog.Title className="h3">{item.name}</Dialog.Title>
                 <dl>
-                  <dt>Rank</dt>
-                  <dd className="tabular">
-                    #{item.rank} of {item.of} in this Qloo query
-                  </dd>
                   <dt>Qloo affinity</dt>
                   <dd className="tabular">{item.affinity !== undefined ? `${item.affinity} (normalised within this query; not a probability)` : "Not returned by Qloo"}</dd>
                   <dt>Popularity</dt>
@@ -92,10 +99,22 @@ export function EvidenceProvider({ items, children }: { items: EvidenceView[]; c
                       <dd>{item.tags.join(", ")}</dd>
                     </>
                   ) : null}
-                  <dt>Cited in</dt>
-                  <dd>{item.citedIn.length ? item.citedIn.join("; ") : "Not cited in a claim"}</dd>
                 </dl>
-                <Dialog.Close className="btn btn-sm btn-outline" style={{ marginTop: 20 }}>
+                <p className="eyebrow" style={{ marginTop: 22 }}>
+                  Cited in
+                </p>
+                {item.citedIn.length ? (
+                  <ul className="cited-in">
+                    {item.citedIn.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted" style={{ fontSize: 14 }}>
+                    Not cited in a claim. It is part of the research ledger.
+                  </p>
+                )}
+                <Dialog.Close className="btn btn-sm btn-outline" style={{ marginTop: 24 }}>
                   Close
                 </Dialog.Close>
               </>

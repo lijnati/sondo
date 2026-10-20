@@ -87,6 +87,34 @@ function toBriefInput(d: Draft): BriefInput {
   };
 }
 
+/** Field keys (as briefErrors reports them) → the label a person sees. */
+const FIELD_LABEL: Record<string, string> = {
+  brandName: "Brand name",
+  brandDescription: "What the brand is",
+  "audience.description": "Who they are",
+  "audience.ages": "Age buckets",
+  market: "City or region",
+  objective: "Goal",
+  anchors: "Cultural anchors",
+  "constraints.tone": "Tone",
+  "constraints.notes": "Notes",
+};
+
+function Section({ n, title, why, children }: { n: number; title: string; why: string; children: ReactNode }) {
+  return (
+    <fieldset className="fieldset">
+      <legend>
+        <span className="legend-num" aria-hidden="true">
+          {n}
+        </span>
+        {title}
+      </legend>
+      <p className="why">{why}</p>
+      {children}
+    </fieldset>
+  );
+}
+
 type Phase =
   | { kind: "editing" }
   | { kind: "submitting" }
@@ -185,7 +213,7 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
   if (phase.kind === "running") {
     return (
       <div ref={sectionRef}>
-        <RunLive runId={phase.runId} brandName={phase.brandName} reader={phase.reader} />
+        <RunLive runId={phase.runId} brandName={phase.brandName} reader={phase.reader} titleAs="h2" />
       </div>
     );
   }
@@ -195,12 +223,14 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
   const errId = (key: string) => `${uid}-${key}-error`;
   const aria = (key: string) => ({ id: fieldId(key), "aria-invalid": show(key) ? true : undefined, "aria-describedby": show(key) ? errId(key) : undefined });
   const err = (key: string) => (show(key) ? <p id={errId(key)} className="field-error">{show(key)}</p> : null);
+  const invalid = attempted && !parsed.success ? Object.keys(errors) : [];
+  const constraintsOpen = ["constraints.tone", "constraints.notes"].some((k) => show(k)) || draft.excludeCategories.length > 0 || !!draft.tone || !!draft.notes;
 
   return (
     <div ref={sectionRef} className="form-grid">
       <form onSubmit={submit} noValidate aria-describedby={`${uid}-privacy`}>
-        <div className="sheet" style={{ marginBottom: 14 }}>
-          <p className="eyebrow">Start from an example</p>
+        <div className="sheet examples-sheet">
+          <p className="eyebrow">Start from an example, or write your own</p>
           <div className="examples">
             {EXAMPLES.map((ex) => (
               <button
@@ -216,8 +246,16 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
                 {ex.label}
               </button>
             ))}
-            <button type="button" className="toggle" onClick={() => update(EMPTY)}>
-              Clear
+            <button
+              type="button"
+              className="toggle toggle-ghost"
+              onClick={() => {
+                update(EMPTY);
+                setTouched(new Set());
+                setAttempted(false);
+              }}
+            >
+              Clear the form
             </button>
           </div>
           <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>
@@ -225,8 +263,7 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
           </p>
         </div>
 
-        <fieldset className="fieldset">
-          <legend>Brand</legend>
+        <Section n={1} title="Brand" why="Sondo looks the brand up in Qloo and uses it as a signal when Qloo knows it.">
           <div className="field">
             <label htmlFor={fieldId("brandName")}>
               Brand name <span className="count">{draft.brandName.length}/80</span>
@@ -242,10 +279,9 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
             <span className="hint">Product, positioning, what is launching. At least 10 characters.</span>
             {err("brandDescription")}
           </div>
-        </fieldset>
+        </Section>
 
-        <fieldset className="fieldset">
-          <legend>Audience</legend>
+        <Section n={2} title="Audience" why="Age buckets and gender become Qloo signals. Everything else stays as context and is listed as not modeled.">
           <div className="field">
             <label htmlFor={fieldId("audience.description")}>
               Who they are <span className="count">{draft.audienceDescription.length}/400</span>
@@ -256,7 +292,10 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
           </div>
           <div className="field">
             <span className="label" id={fieldId("audience.ages")}>
-              Qloo age buckets <span className="count">{draft.ages.length}/3</span>
+              <span>
+                Qloo age buckets <span className="opt">optional</span>
+              </span>
+              <span className="count">{draft.ages.length}/3</span>
             </span>
             <div className="toggles" role="group" aria-labelledby={fieldId("audience.ages")}>
               {AGE_BUCKETS.map((a) => {
@@ -273,7 +312,9 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
           </div>
           <div className="field">
             <span className="label" id={fieldId("audience.gender")}>
-              Gender
+              <span>
+                Gender <span className="opt">optional</span>
+              </span>
             </span>
             <div className="toggles" role="radiogroup" aria-labelledby={fieldId("audience.gender")}>
               {(["", "female", "male"] as const).map((g) => (
@@ -284,10 +325,9 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
             </div>
             <span className="hint">Set it only if the brief targets one. Qloo models binary gender only.</span>
           </div>
-        </fieldset>
+        </Section>
 
-        <fieldset className="fieldset">
-          <legend>Market and goal</legend>
+        <Section n={3} title="Market and goal" why="The market is Qloo's locality signal and the baseline Sondo compares this audience against. The goal shapes the concepts.">
           <div className="field">
             <label htmlFor={fieldId("market")}>City or region</label>
             <input className="input" maxLength={80} value={draft.market} onChange={(e) => update({ market: e.target.value })} onBlur={() => touch("market")} placeholder="e.g. New York City" autoComplete="off" {...aria("market")} />
@@ -306,13 +346,15 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
             </div>
             {err("objective")}
           </div>
-        </fieldset>
+        </Section>
 
-        <fieldset className="fieldset">
-          <legend>Cultural anchors</legend>
+        <Section n={4} title="Cultural anchors" why="The strongest signal you can give: artists, shows, brands or places this audience already loves.">
           <div className="field">
             <label htmlFor={fieldId("anchors")}>
-              Things this audience is known to love <span className="count">{draft.anchors.length}/6</span>
+              <span>
+                Things this audience is known to love <span className="opt">optional</span>
+              </span>
+              <span className="count">{draft.anchors.length}/6</span>
             </label>
             <div className="anchor-add">
               <input
@@ -360,10 +402,16 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
             <span className="hint">Optional but strongly recommended. Names Qloo can&apos;t find are reported, never invented.</span>
             {err("anchors")}
           </div>
-        </fieldset>
+        </Section>
 
-        <fieldset className="fieldset">
-          <legend>Constraints</legend>
+        <details className="fieldset constraints" open={constraintsOpen || undefined}>
+          <summary>
+            <span className="legend-num" aria-hidden="true">
+              5
+            </span>
+            Constraints <span className="opt">optional</span>
+          </summary>
+          <p className="why">Leave out categories you can&apos;t use, and note the tone the concepts should keep.</p>
           <div className="field">
             <span className="label" id={fieldId("constraints.excludeCategories")}>
               Leave out categories
@@ -395,16 +443,36 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
               {err("constraints.notes")}
             </div>
           </div>
-        </fieldset>
+        </details>
 
         {phase.kind === "failed" ? (
           <div className={`notice ${phase.tone}`} role="alert" style={{ marginTop: 16 }}>
             <p>{phase.message}</p>
           </div>
         ) : null}
-        {attempted && !parsed.success ? (
-          <div className="notice bad" role="alert" style={{ marginTop: 16 }}>
-            <p>Some fields need attention before Sondo can start.</p>
+        {invalid.length ? (
+          <div className="notice bad error-summary" role="alert" style={{ marginTop: 16 }}>
+            <div>
+              <p>Some fields need attention before Sondo can start.</p>
+              <ul>
+                {invalid.map((k) => (
+                  <li key={k}>
+                    <a
+                      href={`#${fieldId(k)}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const el = document.getElementById(fieldId(k));
+                        el?.scrollIntoView({ block: "center" });
+                        (el?.matches("input, textarea") ? el : el?.parentElement?.querySelector<HTMLElement>("button"))?.focus();
+                      }}
+                    >
+                      {FIELD_LABEL[k] ?? k}
+                    </a>
+                    : {errors[k]}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         ) : null}
 
@@ -422,13 +490,36 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
         </p>
       </form>
 
-      <BriefRail draft={draft} />
+      <BriefRail draft={draft} errors={errors} liveRuns={liveRuns} />
     </div>
   );
 }
 
-/** "How Sondo will read this": what maps to a Qloo signal, and what doesn't. */
-function BriefRail({ draft }: { draft: Draft }) {
+const REQUIRED = [
+  ["brandName", "Brand name"],
+  ["brandDescription", "What the brand is"],
+  ["audience.description", "Who the audience is"],
+  ["market", "City or region"],
+  ["objective", "Goal"],
+] as const;
+
+function requiredValue(d: Draft, key: (typeof REQUIRED)[number][0]): string {
+  switch (key) {
+    case "brandName":
+      return d.brandName;
+    case "brandDescription":
+      return d.brandDescription;
+    case "audience.description":
+      return d.audienceDescription;
+    case "market":
+      return d.market;
+    case "objective":
+      return d.objective;
+  }
+}
+
+/** "How Sondo will read this": what maps to a Qloo signal, what doesn't, and what's still needed. */
+function BriefRail({ draft, errors, liveRuns }: { draft: Draft; errors: Record<string, string>; liveRuns: boolean }) {
   return (
     <aside className="sheet form-rail" aria-label="How Sondo will read this brief">
       <p className="eyebrow">How Sondo will read this</p>
@@ -436,14 +527,32 @@ function BriefRail({ draft }: { draft: Draft }) {
         <dt>Locality signal</dt>
         <dd className={draft.market.trim() ? "" : "not"}>{draft.market.trim() || "No market yet"}</dd>
         <dt>Age buckets</dt>
-        <dd className={draft.ages.length ? "" : "not"}>{draft.ages.length ? draft.ages.map((a) => AGE_LABEL[a]).join(", ") : "None: market baseline only"}</dd>
+        <dd className={draft.ages.length ? "" : "not"}>{draft.ages.length ? draft.ages.map((a) => AGE_LABEL[a]).join(", ") : "None: market baseline only, no audience lift"}</dd>
         <dt>Gender</dt>
         <dd className={draft.gender ? "" : "not"}>{draft.gender ? (draft.gender === "female" ? "Female" : "Male") : "Not modeled"}</dd>
         <dt>Entity anchors</dt>
         <dd className={draft.anchors.length ? "" : "not"}>{draft.anchors.length ? draft.anchors.map((a) => a.name).join(", ") : "None: Sondo will rely on the brand name"}</dd>
         <dt>Not modeled by Qloo</dt>
-        <dd className="not">Free-text psychographics, income, job title and values unless a Qloo tag matches. The plan lists them.</dd>
+        <dd className="not">Free-text psychographics, income, job title and values, unless a Qloo tag matches. The report lists them.</dd>
       </dl>
+      <p className="eyebrow" style={{ marginTop: 22 }}>
+        Needed to start
+      </p>
+      <ul className="ready-list">
+        {REQUIRED.map(([k, label]) => {
+          const ok = !errors[k] && requiredValue(draft, k).trim() !== "";
+          return (
+            <li key={k} data-ok={ok}>
+              <span className="ready-mark" aria-hidden="true">
+                {ok ? "✓" : ""}
+              </span>
+              {label}
+              <span className="sr-only">{ok ? ": done" : ": still needed"}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="rail-budget">{liveRuns ? "Each run uses up to 24 Qloo queries and 4 model calls, and takes about two minutes." : "Live runs are paused right now."}</p>
     </aside>
   );
 }

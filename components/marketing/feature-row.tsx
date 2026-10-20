@@ -2,8 +2,12 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 
 import { PixelScene } from "@/components/marketing/pixel-scene";
+import { categoryLabel } from "@/lib/brief/labels";
+import type { FeaturedExcerpt } from "@/lib/db/runs";
 
-export function FeatureRow() {
+/** Audience lift, shown with the biggest real mover from the top featured report. */
+export function FeatureRow({ excerpt }: { excerpt: FeaturedExcerpt | null }) {
+  const lift = excerpt?.topLift ?? null;
   return (
     <section className="block" id="lift" aria-labelledby="lift-title" style={{ paddingTop: 36 }}>
       <div className="m-container feature">
@@ -12,14 +16,13 @@ export function FeatureRow() {
             Audience lift, not averages. <em>This</em> audience, not everyone.
           </h2>
           <p className="muted reveal" style={{ marginTop: 18, maxWidth: "42ch", lineHeight: 1.8, "--d": "0.1s" } as CSSProperties}>
-            Sondo runs each category twice. Once with the audience signals, once as a location baseline.
-            The comparison shows what over-indexes here. Lift is a Sondo heuristic, not audience size and not
-            a sales forecast.
+            Sondo runs each category twice. Once with the audience signals, once as a market baseline. The comparison
+            shows what over-indexes here. Lift is a Sondo heuristic, not audience size and not a sales forecast.
           </p>
           <ul className="ticks reveal" style={{ "--d": "0.15s" } as CSSProperties}>
             <li>
               <SearchIcon />
-              Target query and market baseline, side by side.
+              Audience query and market baseline, side by side.
             </li>
             <li>
               <LinesIcon />
@@ -33,11 +36,13 @@ export function FeatureRow() {
           <Link href="/new" className="btn btn-butter reveal" style={{ "--d": "0.2s" } as CSSProperties}>
             Build a cultural brief <span className="i" aria-hidden="true">→</span>
           </Link>
-          <p style={{ marginTop: 18 }}>
-            <a className="text-link" href="#evidence">
-              See the example card ↗
-            </a>
-          </p>
+          {excerpt ? (
+            <p style={{ marginTop: 18 }}>
+              <Link className="text-link" href={`/r/${excerpt.id}#signals`}>
+                See every mover in the {excerpt.brandName} report <span aria-hidden="true">↗</span>
+              </Link>
+            </p>
+          ) : null}
         </div>
         <div className="art-card reveal" style={{ "--d": "0.15s" } as CSSProperties}>
           <PixelScene preset="bloom" seed={4} shade="soft" />
@@ -46,38 +51,50 @@ export function FeatureRow() {
               <span className="ok" aria-hidden="true">
                 ✓
               </span>
-              Example affinity
+              {excerpt ? `${excerpt.brandName} · ${excerpt.market}` : "Audience lift"}
             </div>
-            <div className="amount">
-              <div className="mono" style={{ marginBottom: 12 }}>
-                Sample · not a Qloo result
+            {lift && excerpt ? (
+              <>
+                <div className="amount">
+                  <div className="mono" style={{ marginBottom: 12 }}>
+                    {lift.id} · {categoryLabel(lift.filterType)}
+                  </div>
+                  <p className="lift-name-big">{lift.name}</p>
+                  <p className="big">
+                    <span className="sr-only">Rank </span>#{lift.rank}
+                    <small>
+                      {" "}
+                      vs #{lift.rank + (lift.lift ?? 0)}
+                    </small>
+                  </p>
+                  <p className="muted" style={{ marginTop: 12, fontSize: 11.5 }}>
+                    Rank in the audience query, then in the market baseline. Sondo heuristic.
+                  </p>
+                </div>
+                <div className="receipt-row">
+                  <span>Moved up {lift.lift} places for this audience</span>
+                  <span className="tabular">Lists of {lift.of}</span>
+                </div>
+                <div className="receipt-row mint">
+                  <span>Over-indexes for this audience</span>
+                  <span aria-hidden="true">↗</span>
+                </div>
+              </>
+            ) : (
+              <div className="amount">
+                <p className="muted" style={{ fontSize: 13 }}>
+                  No stored report to read a lift from right now.
+                </p>
               </div>
-              <p className="big">
-                <span className="sr-only">Example ranks </span>4<small> vs 18</small>
-              </p>
-              <p className="muted" style={{ marginTop: 12, fontSize: 11 }}>
-                Audience rank, then the market baseline. Sondo heuristic.
-              </p>
-            </div>
-            <div className="receipt-row">
-              <span>One category · cites E14</span>
-              <span>Example</span>
-            </div>
-            <div className="receipt-row mint">
-              <span>Over-indexes for this audience</span>
-              <span aria-hidden="true">↗</span>
-            </div>
+            )}
           </div>
           <div className="pills" aria-hidden="true">
             <span>Audience</span>
             <span>Baseline</span>
-            <span>Example</span>
+            <span>Real ledger</span>
           </div>
         </div>
       </div>
-      <p className="example-note m-container" style={{ marginTop: 16 }}>
-        Previews use example data.
-      </p>
     </section>
   );
 }

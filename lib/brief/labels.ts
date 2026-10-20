@@ -35,7 +35,7 @@ export const OBJECTIVE_LABEL: Record<(typeof OBJECTIVES)[number], string> = {
 export function categoryLabel(value: string): string {
   const key = value.replace(/^urn:entity:/, "");
   if (key in CATEGORY_LABEL) return CATEGORY_LABEL[key as EntityType];
-  if (key === "urn:tag" || key === "taste themes" || key.startsWith("urn:tag")) return "Taste themes";
+  if (key === "urn:tag" || key === "taste" || key === "taste themes" || key.startsWith("urn:tag")) return "Taste themes";
   if (key === "urn:demographics" || key === "demographics") return "Demographics";
   return key.replace(/_/g, " ");
 }

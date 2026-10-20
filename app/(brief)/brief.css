@@ -1,12 +1,16 @@
-/* Brief page only. Shares the meadow tokens from marketing.css. */
+/* Brief page only. Tokens come from app/meadow.css. */
 
 .marketing .brief-hero {
   height: auto;
-  min-height: 640px;
+  min-height: 520px;
 }
 
 .marketing .brief-hero .sky-copy {
-  margin: 48px auto 80px;
+  margin: 56px auto 96px;
+}
+
+.marketing .composer {
+  padding-top: 64px;
 }
 
 .marketing .shell {
@@ -16,12 +20,6 @@
   align-items: center;
 }
 
-.marketing .empty-card {
-  padding: 28px 30px;
-  background: var(--sheet);
-  border-radius: 18px;
-  box-shadow: inset 0 0 0 1px var(--rule);
-}
 
 .marketing .field-row {
   display: flex;

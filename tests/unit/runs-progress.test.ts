@@ -91,4 +91,13 @@ describe("summarizeRun", () => {
     expect(s.decisions).toHaveLength(1);
     expect(s.claims).toMatchObject({ checked: 12, downgraded: 2 });
   });
+
+  it("keeps the latest Qloo calls newest first, capped at twelve", () => {
+    const calls: PublicRunEvent[] = Array.from({ length: 14 }, (_, i) => ({ t: "qloo", kind: "insights", category: "urn:entity:artist", ok: i !== 3, cached: i % 2 === 0, results: i, ms: 100 + i }));
+    const s = summarizeRun(seq([started, ...calls]));
+    expect(s.recentQloo).toHaveLength(12);
+    expect(s.recentQloo[0]).toMatchObject({ results: 13, ms: 113, cached: false, category: "urn:entity:artist" });
+    expect(s.recentQloo.at(-1)?.results).toBe(2);
+    expect(s.qloo).toMatchObject({ calls: 14, failed: 1, cached: 7 });
+  });
 });

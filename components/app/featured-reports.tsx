@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import Link from "next/link";
 
 import { getDb } from "@/lib/db/client";
-import { listFeatured, type FeaturedCard } from "@/lib/db/runs";
+import { featuredExcerpt, listFeatured, type FeaturedCard, type FeaturedExcerpt } from "@/lib/db/runs";
 import { OBJECTIVE_LABEL } from "@/lib/brief/labels";
 
 const TINTS = ["mint", "cream", "ice"] as const;
@@ -18,6 +18,23 @@ async function featured(): Promise<FeaturedCard[]> {
   cacheLife("minutes");
   cacheTag("featured");
   return listFeatured(getDb());
+}
+
+/** One real excerpt of the top featured report for the landing page; null if unavailable. */
+export async function loadExcerpt(): Promise<FeaturedExcerpt | null> {
+  await connection();
+  try {
+    return await excerpt();
+  } catch {
+    return null;
+  }
+}
+
+async function excerpt(): Promise<FeaturedExcerpt | null> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("featured");
+  return featuredExcerpt(getDb());
 }
 
 /**
@@ -48,23 +65,35 @@ export async function FeaturedReports() {
     <div className="featured-cards">
       {cards.map((c, i) => (
         <Link key={c.id} href={`/r/${c.id}`} className={`featured-card card ${TINTS[i % 3]}`} style={{ minHeight: 0 }}>
-          <p className="eyebrow">
-            {c.market} · {OBJECTIVE_LABEL[c.objective]}
-          </p>
+          <div className="fc-top">
+            <p className="eyebrow">
+              {c.market} · {OBJECTIVE_LABEL[c.objective]}
+            </p>
+            <span className="status status-completed">Complete</span>
+          </div>
           <p className="h3">{c.brandName}</p>
-          <p className="muted" style={{ fontSize: 13.5 }}>
-            Complete · grounded in <span className="tabular">{c.evidenceCount}</span> Qloo results across {c.categoryCount} categories
-          </p>
-          <ul>
+          {c.topFinding ? (
+            <p className="fc-finding">
+              <span className="fc-label">Top finding</span>
+              {c.topFinding}
+            </p>
+          ) : null}
+          <ul aria-label="Concepts">
             {c.concepts.map((k) => (
               <li key={k.angle}>
-                <span className="muted">{ANGLE[k.angle] ?? k.angle}:</span> {k.name}
+                <span className="fc-label">{ANGLE[k.angle] ?? k.angle}</span>
+                {k.name}
               </li>
             ))}
           </ul>
-          <span className="text-link" style={{ fontSize: 14 }}>
-            Open report →
-          </span>
+          <div className="fc-foot">
+            <span className="muted">
+              <span className="tabular">{c.evidenceCount}</span> Qloo results · {c.categoryCount} categories
+            </span>
+            <span className="fc-open">
+              Open report <span className="i" aria-hidden="true">→</span>
+            </span>
+          </div>
         </Link>
       ))}
     </div>

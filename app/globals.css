@@ -1,86 +1,33 @@
 @import "tailwindcss";
 
 /*
- * Sondo design tokens — DESIGN.md §2.
- * Raw values live on :root and flip under prefers-color-scheme; @theme inline
- * maps them to Tailwind utilities (bg-bg, text-ink, border-rule, …).
- *
- * Contrast (WCAG): ink-2 on bg ≈ 7:1 (both themes). Accent on bg ≈ 4.5:1 light,
- * 6.3:1 dark — fine for marks, focus and small accent text, but white text on the
- * dark-theme accent fails, so filled buttons use ink, never accent.
+ * Document-level tokens only. Every page renders inside the Pixel Meadow shell
+ * (app/meadow.css), which owns the full token set; these values match it so the
+ * document background, the skip link and global-error stay on-brand.
  */
 :root {
-  --bg: #fafaf9;
-  --surface: #ffffff;
-  --ink: #111111;
-  --ink-2: #55555a;
-  --rule: #e6e6e3;
-  --rule-strong: #cfcfcb;
-  --accent: #e5482d;
-  --accent-soft: #fdebe7;
-  --pos: #1f7a4d;
-  --neg: #b42318;
-  --warn: #9a6200;
+  --bg: #ffffff;
+  --ink: #183d32;
+  --ink-2: #53665d;
+  --accent: #21634e;
+  --danger: #b42318;
   color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b0b0c;
-    --surface: #141416;
-    --ink: #ededed;
-    --ink-2: #a1a1a6;
-    --rule: #26262a;
-    --rule-strong: #3a3a40;
-    --accent: #ff5a3c;
-    --accent-soft: #2a1410;
-    --pos: #4cc38a;
-    --neg: #ff6b5e;
-    --warn: #e0a43a;
-    color-scheme: dark;
-  }
 }
 
 @theme inline {
   --color-bg: var(--bg);
-  --color-surface: var(--surface);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
-  --color-rule: var(--rule);
-  --color-rule-strong: var(--rule-strong);
   --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
-  --color-pos: var(--pos);
-  --color-neg: var(--neg);
-  --color-warn: var(--warn);
+  --color-neg: var(--danger);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  /* Type scale: size / line-height / tracking */
-  --text-display: 3.5rem;
-  --text-display--line-height: 4rem;
-  --text-display--letter-spacing: -0.02em;
-  --text-h1: 2rem;
-  --text-h1--line-height: 2.5rem;
-  --text-h1--letter-spacing: -0.015em;
   --text-h2: 1.375rem;
   --text-h2--line-height: 1.75rem;
-  --text-h2--letter-spacing: -0.01em;
-  --text-body: 0.9375rem;
-  --text-body--line-height: 1.5rem;
   --text-meta: 0.8125rem;
   --text-meta--line-height: 1.25rem;
-
-  /* 8px base unit: Tailwind spacing steps are 4px, so p-2 = 8px, p-4 = 16px … */
-  --spacing: 0.25rem;
-
-  --radius-sm: 6px;
-  --radius-md: 10px;
-
-  --ease-out-sondo: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --default-transition-duration: 180ms;
-  --default-transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @layer base {
@@ -93,33 +40,14 @@
     background-color: var(--bg);
     color: var(--ink);
     font-family: var(--font-sans);
-    font-size: var(--text-body);
-    line-height: var(--text-body--line-height);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  *,
-  ::before,
-  ::after {
-    border-color: var(--rule);
-  }
-
-  ::selection {
-    background: var(--accent-soft);
-    color: var(--ink);
-  }
-
-  /* Visible, consistent focus — accent ring (DESIGN.md §6). */
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    border-radius: var(--radius-sm);
   }
-}
-
-@utility tabular {
-  font-variant-numeric: tabular-nums;
 }
 
 @media (prefers-reduced-motion: reduce) {

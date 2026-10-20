@@ -29,14 +29,14 @@ export function BriefHero() {
           Sondo
         </Link>
         <nav aria-label="Brief">
-          <a href="#examples">Examples</a>
-          <a href="#reading">How it reads</a>
-          <Link href="/">About</Link>
+          <a href="#composer">Your brief</a>
+          <a href="#examples">Featured reports</a>
+          <Link href="/#how-it-works">How it works</Link>
         </nav>
         <div className="sky-logins">
-          <a className="btn btn-sm btn-sheet" href="#composer">
-            Your brief <span className="i" aria-hidden="true">↓</span>
-          </a>
+          <Link className="btn btn-sm btn-sheet" href="/">
+            Home <span className="i i-ne" aria-hidden="true">↗</span>
+          </Link>
         </div>
       </div>
       <div className="sky-copy">
@@ -51,20 +51,17 @@ export function BriefHero() {
           </span>
         </h1>
         <p className="sky-lede reveal" style={{ "--d": "0.5s" } as CSSProperties}>
-          Describe your brand, audience and market. Sondo researches what this audience genuinely over-indexes
-          on, then drafts three cited strategies.
+          Describe your brand, audience and market. Sondo researches what this audience over-indexes on in Qloo,
+          then drafts three concepts that cite their evidence.
         </p>
         <div className="sky-actions reveal" style={{ "--d": "0.65s" } as CSSProperties}>
           <a className="btn btn-butter" href="#composer">
             Write your brief <span className="i" aria-hidden="true">→</span>
           </a>
           <a className="btn btn-sheet" href="#examples">
-            Featured examples
+            See a finished report
           </a>
         </div>
-        <p className="sky-fine reveal" style={{ "--d": "0.8s" } as CSSProperties}>
-          Runs are live: every claim in a report cites a stored Qloo result.
-        </p>
       </div>
     </header>
   );

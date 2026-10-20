@@ -198,6 +198,8 @@ export interface FeaturedCard {
   evidenceCount: number;
   categoryCount: number;
   concepts: { angle: string; name: string; positioning: string }[];
+  /** The first strong (else moderate) code-written finding, or null. */
+  topFinding: string | null;
 }
 
 const FeaturedRowSchema = z.object({
@@ -207,7 +209,13 @@ const FeaturedRowSchema = z.object({
   evidence_count: z.coerce.number(),
   category_count: z.coerce.number(),
   concepts: json(z.array(z.object({ angle: z.string(), name: z.string(), positioning: z.string() }))),
+  top_finding: z.string().nullable(),
 });
+
+/** Findings worth leading a card with: a signal, not a gap or conflict. */
+const LEAD_FINDING = `(select f.v->>'statement' from jsonb_array_elements(report->'findings') with ordinality f(v, i)
+   where f.v->>'kind' in ('audience_lift', 'distinctive', 'affinity', 'intersection', 'theme') and f.v->>'strength' in ('strong', 'moderate')
+   order by case f.v->>'strength' when 'strong' then 0 else 1 end, f.i limit 1)`;
 
 export async function listFeatured(db: Db): Promise<FeaturedCard[]> {
   const rows = await db.query(
@@ -215,7 +223,8 @@ export async function listFeatured(db: Db): Promise<FeaturedCard[]> {
             jsonb_array_length(report->'evidence') as evidence_count,
             (select count(distinct e->'query'->>'filterType') from jsonb_array_elements(report->'evidence') e) as category_count,
             (select coalesce(jsonb_agg(jsonb_build_object('angle', c->>'angle', 'name', c->>'name', 'positioning', c->>'positioning')), '[]'::jsonb)
-               from jsonb_array_elements(report->'concepts') c) as concepts
+               from jsonb_array_elements(report->'concepts') c) as concepts,
+            ${LEAD_FINDING} as top_finding
      from runs where featured and status = 'completed' order by featured_rank`,
   );
   return rows.map((raw) => {
@@ -229,6 +238,80 @@ export async function listFeatured(db: Db): Promise<FeaturedCard[]> {
       evidenceCount: r.evidence_count,
       categoryCount: r.category_count,
       concepts: r.concepts,
+      topFinding: r.top_finding,
     };
   });
+}
+
+// ── Landing excerpt ───────────────────────────────────────────────────────
+
+const ExcerptEvidence = z.object({
+  id: z.string(),
+  name: z.string(),
+  filterType: z.string(),
+  rank: z.coerce.number(),
+  of: z.coerce.number(),
+  lift: z.coerce.number().nullable(),
+});
+export type ExcerptEvidence = z.infer<typeof ExcerptEvidence>;
+
+const ExcerptConcept = z.object({
+  angle: z.string(),
+  name: z.string(),
+  positioning: z.string(),
+  culturalInsight: z.object({ text: z.string(), kind: z.string(), support: z.string().optional(), evidenceIds: z.array(z.string()) }),
+});
+
+export interface FeaturedExcerpt {
+  id: string;
+  brandName: string;
+  market: string;
+  concept: z.infer<typeof ExcerptConcept>;
+  /** The ledger items the concept's insight cites (at most four). */
+  cited: ExcerptEvidence[];
+  /** The audience-query item with the largest positive lift vs. the baseline. */
+  topLift: ExcerptEvidence | null;
+}
+
+const evidenceSlice = (e: string) =>
+  `jsonb_build_object('id', ${e}->>'id', 'name', ${e}->'entity'->>'name', 'filterType', ${e}->'query'->>'filterType', 'rank', ${e}->>'rank', 'of', ${e}->>'of', 'lift', ${e}->'derived'->>'lift')`;
+
+/**
+ * A small, real excerpt of the top featured report for the landing page: one concept's
+ * cultural insight with the ledger items it cites, and the biggest audience-lift mover.
+ * Read in SQL so the page never loads a whole report. Null when nothing is featured.
+ */
+export async function featuredExcerpt(db: Db): Promise<FeaturedExcerpt | null> {
+  const [row] = await db.query(
+    `select id, brief,
+            (select coalesce(jsonb_agg(jsonb_build_object('angle', c->>'angle', 'name', c->>'name', 'positioning', c->>'positioning', 'culturalInsight', c->'culturalInsight')), '[]'::jsonb)
+               from jsonb_array_elements(report->'concepts') c) as concepts,
+            (select ${evidenceSlice("e")} from jsonb_array_elements(report->'evidence') e
+               where e->'query'->>'variant' = 'target' and e->'entity'->>'kind' = 'entity'
+                 and coalesce((e->'derived'->>'newInTarget')::boolean, false) = false
+                 and (e->'derived'->>'lift')::int > 0
+               order by (e->'derived'->>'lift')::int desc, (e->>'rank')::int limit 1) as top_lift
+     from runs where featured and status = 'completed' order by featured_rank limit 1`,
+  );
+  if (!row) return null;
+  const head = z
+    .object({ id: z.string(), brief: json(Brief), concepts: json(z.array(ExcerptConcept)), top_lift: json(ExcerptEvidence.nullable()) })
+    .parse(row);
+  // Prefer a concept whose insight is directly supported by a named Qloo result.
+  const concept =
+    head.concepts.find((c) => c.culturalInsight.kind === "evidence" && c.culturalInsight.support === "direct" && c.culturalInsight.evidenceIds.length) ??
+    head.concepts.find((c) => c.culturalInsight.evidenceIds.length) ??
+    head.concepts[0];
+  if (!concept) return null;
+  const ids = concept.culturalInsight.evidenceIds.slice(0, 4);
+  const cited = ids.length
+    ? (
+        await db.query(
+          `select ${evidenceSlice("e")} as item from runs, jsonb_array_elements(report->'evidence') e where runs.id = $1 and e->>'id' = any($2::text[])`,
+          [head.id, ids],
+        )
+      ).map((r) => ExcerptEvidence.parse(typeof r.item === "string" ? JSON.parse(r.item) : r.item))
+    : [];
+  cited.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+  return { id: head.id, brandName: head.brief.brandName, market: head.brief.market, concept, cited, topLift: head.top_lift };
 }
