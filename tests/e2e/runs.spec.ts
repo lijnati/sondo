@@ -41,10 +41,48 @@ test("featured reports open from the landing page and render validated content",
   expect(res?.status()).toBe(200);
   await expect(page.locator(".status-completed").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: /Three concepts/ })).toBeVisible();
-  await expect(page.locator("article.concept")).toHaveCount(3);
-  await page.locator("button.ev").first().click();
+
+  // Concepts: a real tablist, one panel visible, arrow keys move between them.
+  const tabs = page.getByRole("tablist", { name: "Concepts" }).getByRole("tab");
+  await expect(tabs).toHaveCount(3);
+  await expect(page.locator(".concept-panel:not([hidden])")).toHaveCount(1);
+  await tabs.first().focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
+  await expect(tabs.nth(1)).toBeFocused();
+  await expect(page.locator("#concept-distinctive_niche")).toBeVisible();
+
+  // Evidence drawer opens from an E# chip and returns focus to it on close.
+  const chip = page.locator("#overview button.ev").first();
+  await chip.click();
   await expect(page.getByRole("dialog")).toContainText("in this Qloo query");
   await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(chip).toBeFocused();
+
+  // Ledger: a category filter hides other rows; "show all" reveals the rest.
+  const rows = page.locator("#evidence tbody tr");
+  const visibleRows = () => rows.evaluateAll((trs) => trs.filter((tr) => (tr as HTMLElement).offsetParent !== null).length);
+  const firstView = await visibleRows();
+  const total = await rows.count();
+  expect(firstView).toBeLessThanOrEqual(12);
+  if (total > firstView) {
+    await page.locator("#evidence .ledger-toggle").click();
+    expect(await visibleRows()).toBe(total);
+  }
+  await page.locator("#evidence .filter-pill").nth(1).click();
+  const cat = await page.locator("#evidence .filter-pill").nth(1).locator("input").getAttribute("value");
+  const shown = await rows.evaluateAll((trs) => trs.filter((tr) => (tr as HTMLElement).offsetParent !== null).map((tr) => tr.getAttribute("data-cat")));
+  expect(shown.length).toBeGreaterThan(0);
+  expect(new Set(shown)).toEqual(new Set([cat]));
+
+  // Charts carry a table fallback.
+  const chartTable = page.locator("#signals details.chart-table").first();
+  if (await chartTable.count()) {
+    await chartTable.locator("summary").click();
+    await expect(chartTable.locator("table")).toBeVisible();
+  }
+
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
@@ -57,7 +95,7 @@ test("live: a brief runs end to end and opens its permalink", async ({ page }, i
   await page.getByRole("button", { name: "Cold brew · Austin" }).click();
   await page.getByRole("button", { name: /Run research/ }).click();
   await expect(page).toHaveURL(/\/r\/[0-9A-Za-z]{12}$/, { timeout: 20_000 });
-  await expect(page.getByText(/Researching Oat Hour/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Researching Oat Hour/ })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Oat Hour" })).toBeVisible({ timeout: 220_000 });
   await expect(page.locator(".report-meta .status")).toHaveText(/Complete|Partial/);
 });

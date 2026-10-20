@@ -359,8 +359,11 @@
 }
 
 .marketing .error-summary ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   margin-top: 6px;
-  padding-left: 18px;
+  list-style: none;
 }
 
 .marketing .error-summary a {
@@ -414,6 +417,11 @@
 }
 
 /* ---------- live research ---------- */
+/* Once a run starts on /new, the live view replaces the form and its intro. */
+.marketing .composer:has(.live) .head {
+  display: none;
+}
+
 .marketing .live-wrap {
   padding: 36px 0 72px;
 }

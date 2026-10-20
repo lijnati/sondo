@@ -1,6 +1,6 @@
 # ROADMAP.md — Phase plan to submission
 
-Today is **Thu 2026-10-15**. Hard deadline: **Fri Oct 30, 11:45 pm ET**. Internal submission target: **Thu Oct 29, 6:00 pm ET**. Oct 30 is a buffer with no feature work.
+Today is **Tue 2026-10-20**. Hard deadline: **Fri Oct 30, 11:45 pm ET**. Internal submission target: **Thu Oct 29, 6:00 pm ET**. Oct 30 is a buffer with no feature work.
 Order of investment: **Qloo integration → agent → app plumbing → design → hardening → submission.** A deployed URL exists from Phase 1 onward.
 
 | Phase | Dates | Theme | Exit gate |
@@ -10,7 +10,7 @@ Order of investment: **Qloo integration → agent → app plumbing → design �
 | 1b | Oct 17 | Qloo data layer | Typed Qloo tools tested ✅. Live probe: 12/13 capabilities verified ✅. Neon deferred to Phase 3 (not needed yet). Public repo and deploy await approval. |
 | 2 | Oct 17–19 | Agent workflow | ✅ Closed Oct 19. Live `pnpm eval` on 5 briefs with the free model: 4/4 completed, brief 5 degraded to an explained partial, 0 invalid citations, 0 unsupported evidence claims, all budgets held (see Phase 2 results). Phase 3 awaits approval. |
 | 3 | Oct 19 | App integration | ✅ Built and verified locally Oct 19 against live Qloo, the live model and Neon: brief → live stream → persisted report permalink, 3 verified featured reports. Production deploy awaits approval (see Phase 3 results). |
-| 4 | Oct 24–27 | Product design and UX | All pages and states designed. Featured reports look launch-ready. |
+| 4 | Oct 20 | Product design and UX | ✅ Built and verified Oct 20 (see Phase 4 results). Light-only by founder decision. Phase 5 awaits approval. |
 | 5 | Oct 27–28 | Hardening and verification | E2E green. Failure injection handled. Quota protections verified. |
 | 6 | Oct 29 | Documentation and submission | Devpost submitted, with the checklist in HACKATHON.md §8 complete |
 
@@ -141,6 +141,57 @@ Totals: 0 invalid citations, 0 mismatched citations left in output, 0 evidence c
 **Risks:** polish eats into the time for hardening, so Phase 4 is timeboxed and P1 polish items move to a post-submission list.
 **Verification:** the design QA checklist (DESIGN.md §7); a Lighthouse a11y score ≥ 95 on the landing and report pages; real runs show empty and partial states.
 **Done when:** the checklist passes and featured reports are screenshot-ready.
+
+### Phase 4 results (2026-10-20)
+*Authorized 2026-10-20 and built the same day, ahead of the Oct 24–27 slot, on branch `phase-4-design`. Checked locally against the Neon database and one live run. Not deployed.*
+
+**What changed**
+- **One design system.** `app/meadow.css` holds every Pixel Meadow token, plus type, buttons, states and motion. Page CSS uses tokens only. The Swiss-era tokens and unused shadcn wrappers are gone (`@radix-ui/react-label`, `@radix-ui/react-slot` and `class-variance-authority` were removed).
+- **Light-only.** A "night meadow" dark theme was built and then removed at the founder's request (it looked worse than the light design).
+- **Hydration fixed.** Reveals are now CSS (load animations plus scroll-driven `animation-timeline: view()`). The JS observer that mutated server-rendered nodes is gone. The live view's clock starts after mount. That was a Phase 3 bug that showed as a hydration error on `/r/[id]` while a run was in progress.
+- **Report (`/r/[id]`):**
+  - a cover with a seeded meadow per run, a status and grounding row, and a sticky section nav;
+  - key findings from `keyFindings()`;
+  - a concept tablist with editorial articles and an evidence rail;
+  - three visible evidence tiers (direct, contextual, hypothesis or creative);
+  - SVG lift and distinctiveness charts with table fallbacks;
+  - findings grouped by strength;
+  - a ledger with CSS-only filter and show-all;
+  - a restyled drawer that returns focus to its chip;
+  - "Not written" placeholders, a no-report page that shows the stages reached, and a matching skeleton.
+  - Mobile height for a featured report went from 10,500 px to 9,900 px, and desktop to 6,500 px, while adding charts and navigation.
+- **Live view:** a staged timeline, a feed of the real Qloo queries (`summarizeRun().recentQloo`), 24 budget cells labelled as a budget, evidence bars, and the plan and validation cards. No percentages and no model text.
+- **Composer (`/new`):**
+  - the form comes first, in five numbered sections with "why Sondo asks" lines;
+  - optional fields are marked, and Constraints is collapsed;
+  - an error summary links to each invalid field;
+  - the rail has a "Needed to start" checklist.
+  - The `Brief` contract is unchanged.
+- **Landing:** the illustrative mocks ("example data") are replaced with real excerpts of the top featured report, read in SQL by `featuredExcerpt()`. Featured cards now show the top code-written finding and the three concept names.
+
+**Verification**
+- `pnpm typecheck`, `pnpm lint` and `pnpm test` pass: 260 tests, including new ones for `keyFindings`, `liftRows`, `distinctivenessPoints`, `recentQloo`, the featured card's top finding and `featuredExcerpt`.
+- `pnpm e2e` on the production build:
+  - **First run:** 24 passed, 4 failed. The failures were two real defects: drawer focus not returned, and error messages duplicated by the new summary. Both are fixed.
+  - **Rerun:** 27 passed, 2 skipped (the live test is opt-in), and 1 timeout. The overflow smoke test hit its 30 s budget across three cold page loads on this memory-starved machine.
+  - **Repeat** (`--repeat-each 2` on smoke.spec): the overflow test passed 2/2. One first-request URL wait (5 s, `/new` on a cold server reading Neon over the WAN) missed once, then passed. Treat both as timing flakes to harden in Phase 5. The suite gained coverage for concept-tab keyboard use, drawer focus return, the ledger filter and show-all, and the chart table fallback.
+- Browser QA with Playwright Chromium at 375, 768, 1280 and 1440: landing, `/new`, a completed report, a partial report, an interrupted run, the 404 and the live view. There was no horizontal overflow, and no console or hydration errors on `/` or `/new`.
+- **One live run** through the UI (Cold brew · Austin, `4Y1pIpewUFu9`): 21 of 24 Qloo queries, 114 results across 6 categories. It was stored **partial** after 177 s ("fewer than three grounded concepts"), and the live view showed every stage, query and count from real events.
+
+**Regressions found and fixed:**
+- the drawer did not return focus to its chip;
+- the live clock caused a hydration error;
+- the scatter crowded every point near popularity 1, so the axis is now stretched toward 1 with labelled ticks;
+- the raw category key "taste" showed in grounding lines;
+- after the error summary was added, error messages were duplicated.
+
+**Remaining UI limitations**
+- Reports still ship the whole ledger as HTML (0.5–0.8 MB of JSON is read server-side). The first 12 rows show and the rest is hidden by CSS.
+- On mobile, the concept tab names truncate in a horizontally scrolling row.
+- Scroll-driven reveals reverse when scrolling up, which is by design. Full-page screenshots taken from the top show those sections blank.
+- No Lighthouse run yet (Phase 5).
+
+**Phase 5 readiness:** ready. Open items for Phase 5: the production deploy (still awaiting approval), smoke tests against production, failure injection, and the free model's high partial rate (still the main quality lever).
 
 ## Phase 5: Hardening and verification (Oct 27–28)
 **Objective:** nothing breaks during two weeks of unattended judging.

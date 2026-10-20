@@ -1,109 +1,122 @@
 # DESIGN.md — Visual direction, page architecture, interaction
 
-## 1. Direction: Neo-Swiss editorial precision
-Sondo should feel like a **research publication produced by an instrument**: a printed strategy memo crossed with Linear's precision. Confidence comes from typography, grid and real data, not decoration.
+## 1. Direction: Pixel Meadow, paper mode
+Sondo is a research publication with a warm, recognisable frame. Pixel-art scenes (procedural, `lib/pixel-scene/pixel-scene.js`) live only in **inset rounded frames**: the landing hero, the `/new` hero, closing bands and the report cover. Everything else is calm paper, with hairlines, pill controls and type that stays restrained. The source is the `pixel-meadow-ui` skill (tokens, components, voice). It is **light-only by design**, with no dark theme: the founder chose this on 2026-10-20.
 
 **Principles**
-1. **Evidence is the ornament.** The most visually prominent things are real Qloo results and citations, never stock illustration.
-2. **Grid first.** A 12-column grid, an 8 px base unit, generous margins and hard alignment.
-3. **One accent, used as a signal.** Accent marks evidence, live activity and selection. Nothing else.
-4. **Honest data.** No chart without a question it answers. No number the ledger doesn't contain. Derived metrics are labelled.
-5. **Quiet motion.** Motion explains state changes (progress, reveal, focus) and is never ambient.
+1. **Evidence is the ornament.** On a report, the most prominent things are real Qloo results, their ranks and the claims that cite them.
+2. **Honest data.** Every number on screen is read from the ledger. Charts answer a stated question and have a table fallback. Derived metrics (lift, quadrants) are labelled "Sondo heuristic".
+3. **A creative bet never looks like a finding.** There are three visible evidence tiers (§2.3).
+4. **Quiet motion.** Motion explains state (stage changes, new Qloo calls, reveals) and is off under `prefers-reduced-motion`.
 
-**Banned:** purple or blue gradient heroes, glassmorphism, glowing blobs, fake dashboard screenshots, invented metrics ("10× ROI"), 3D objects, emoji bullets, and stock shadcn dashboard templates.
+**Banned:** generic AI-SaaS gradients and glowing blobs, glassmorphism outside the hero nav, fake dashboards and invented metrics, emoji bullets, testimonials or logos, decorative art that is not one of the meadow scenes, and full-bleed art (art always sits inset from a white page edge).
 
-## 2. Tokens (Tailwind v4 `@theme`)
-| Token | Light | Dark | Use |
+## 2. Tokens (`app/meadow.css`)
+All page CSS uses tokens. A colour changes in one place.
+
+### 2.1 Colour
+| Token | Value | Use |
+|---|---|---|
+| `--bg` / `--sheet` / `--paper` / `--paper-deep` | `#fff` / `#fffefa` / `#f7f9f5` / `#eaf0e8` | page, cards, quiet fills, tracks |
+| `--ink` / `--ink-soft` / `--ink-faint` | `#183d32` / `#53665d` / `#5c7067` | text (never black) |
+| `--rule` / `--rule-strong` | `#dce4da` / `#bdcabe` | hairlines |
+| `--accent` / `--accent-deep` / `--accent-soft` | `#21634e` / `#164c3b` / `#e4eee4` | evidence, selection, focus |
+| `--butter` / `--butter-ink` | `#ffe46b` / `#313712` | the one loud colour: primary action, active stage |
+| `--mint` → `--cream` → `--ice` | pastel triad, always in this order | concept tints, featured cards |
+| `--warn-ink`, `--bad`, `--bad-ink`, `--danger` | | partial, failed, field errors |
+
+Contrast: ink-soft and ink-faint on paper/sheet ≥ 4.5:1; accent on sheet ≥ 4.5:1.
+
+### 2.2 Type, shape, motion
+- **DM Sans** for display at 600–650 with −0.035 to −0.045em tracking. At most one **Instrument Serif** italic word per headline. **Geist Mono** for E#, run ids, ranks and eyebrows.
+- Every interactive surface is a pill. Cards are 14–20 px radius. The container is 1160 px, with 72 px between report sections.
+- Motion uses `cubic-bezier(.22,1,.36,1)`. Hero words and reveals play once on load. Section reveals are CSS scroll-driven (`animation-timeline: view()`) and simply show where that isn't supported. **No script touches server-rendered nodes**, which fixed the Phase 3 hydration mismatches.
+
+### 2.3 Evidence tiers (one system everywhere)
+| Tier | Badge | Card rule | Meaning |
 |---|---|---|---|
-| `--bg` | `#FAFAF9` | `#0B0B0C` | page |
-| `--surface` | `#FFFFFF` | `#141416` | cards, drawers |
-| `--ink` | `#111111` | `#EDEDED` | primary text |
-| `--ink-2` | `#55555A` | `#A1A1A6` | secondary |
-| `--rule` | `#E6E6E3` | `#26262A` | 1 px hairlines (the main structural device) |
-| `--accent` | `#E5482D` (Swiss signal red-orange) | `#FF5A3C` | evidence chips, live state, focus |
-| `--pos` / `--neg` | `#1F7A4D` / `#B42318` | adjusted | lift up/down only |
+| Direct | solid accent | solid accent left rule | the claim names the cited Qloo result |
+| Contextual | outlined | solid soft-green rule | it names a tag or category of the result |
+| Hypothesis / creative idea | dashed outline | dashed amber rule, lighter fill | a strategic bet to test, not a finding |
 
-- **Type:** Geist Sans with a tight display scale: 56/64 display (−2% tracking), 32/40 h1, 22/28 h2, 15/24 body, 13/20 meta. **Geist Mono** for evidence IDs (`E12`), parameters, latency and the trace. Tabular numerals everywhere numbers align.
-- **Radius** 6 px (inputs and chips), 10 px (cards). Shadows are almost absent: rules and whitespace separate content.
-- **Motion:** 150–220 ms with `cubic-bezier(.2,.8,.2,1)`. `prefers-reduced-motion` disables reveals.
+The tier comes only from `claimBadge` and `ideaBadge` (`lib/report/view.ts`), which read the validator's `support`. Weak citations are never shown as support.
 
 ## 3. Information architecture
 
 ```
-/            Landing
-/new         Brief composer (+ 3 featured examples)
-/r/[id]      Run → Report (same URL: live progress, then report)
-   ├─ Overview      (exec summary, audience profile, modeled / not-modeled)
-   ├─ Signals       (per-category ranked lists, lift, distinctiveness map)
-   ├─ Strategies    (3 strategies + comparison table)
-   └─ Evidence      (ledger table + tool trace)
-   [Evidence drawer opens from any E# chip on any tab]
+/            Landing: hero → proof strip → featured reports → four steps → real report excerpt (tabs) → audience lift (real top mover) → is / isn't → FAQ → closing band
+/new         Compact hero → brief form with a sticky rail → featured reports → closing band
+/r/[id]      Running: the live research view. Finished: the report.
+   Cover · meta row · sticky nav: Overview · Concepts · Signals · Findings · Evidence · Method
+   [Evidence drawer opens from any E# chip]
 ```
 
 ## 4. Pages
 
-### 4.1 Landing (`/`)
-- **Hero:** left-aligned display headline "Stop guessing what your audience loves." A one-sentence subhead names Qloo explicitly ("grounded in Qloo's cultural graph"). Primary CTA "Build a cultural brief" and secondary "See an example report".
-- **Proof strip (instead of a fake dashboard):** a *real* excerpt from a featured report. One strategy card with live E# chips, rendered from stored data and clickable into the example.
-- **How it works:** 4 numbered columns on the grid: Brief → Research (Qloo) → Critique → Strategies. Each has a hairline diagram, not icons-in-circles.
-- **What Sondo is / isn't:** a two-column honesty block ("cultural affinity, not purchase intent"). Builds trust with judges.
-- Footer with repo link, license, "Powered by Qloo" attribution and a non-affiliation note.
+### 4.1 Landing
+- The hero keeps "Stop guessing what your audience *loves*."
+- **Featured cards** (`components/app/featured-reports.tsx`) show the status, market and goal, the top code-written finding, the three concept names by angle, and real result and category counts.
+- **Real excerpts** (`featuredExcerpt()` in `lib/db/runs.ts`, read in SQL with no whole-report load):
+  - one concept's cultural insight, with its tier and the ledger rows it cites;
+  - the biggest audience-lift mover, with its real audience and baseline ranks.
+- If the database is unreachable, a ruled box says so and nothing is drawn in its place.
 
 ### 4.2 Brief composer (`/new`)
-- A single column of about 640 px plus a sticky right rail (desktop) titled "How Sondo will read this". The rail updates live as the user types, showing which fields map to Qloo signals.
-- Fields: Brand name; Brand description (textarea); Audience (age-bucket multi-select chips **exactly matching Qloo's 6 buckets**, optional gender, free-text psychographics); Market (locality text); Goal (segmented control); Cultural anchors (token input, up to 6); Constraints (exclude categories, tone).
-- **Featured examples:** 3 cards above the form. Choosing one pre-fills it and links to its cached report.
-- Validation is inline (Zod messages in plain English). The submit button shows the budget: "~60–90 s · up to 40 Qloo queries".
+- The form comes first. It has five numbered sections, each with a "why Sondo asks" line. Optional fields are marked, and Constraints is collapsed unless it has content.
+- **Sticky rail:** "How Sondo will read this" (modeled and not modeled), a "Needed to start" checklist of the five required fields, and the run budget.
+- **Error summary:** a failed submit lists each invalid field as a link that focuses it, and the first field is focused. Messages are the shared Zod messages.
+- The `Brief` contract is unchanged.
 
-### 4.3 Live research (`/r/[id]`, running state)
-- **Left (8 cols): the run timeline.** Nodes as rows (Plan → Resolve → Explore → Deepen → Critique → Strategize → Validate). Each row shows a status dot (accent pulse when active), its elapsed time and a one-line summary ("Resolved 4 of 5 anchors · 'Zzqx' not found in Qloo").
-- **Plan card** appears after node 1. It shows the modeled signals as chips and a **Not modeled** list in muted style. This is the honesty moment.
-- **Right (4 cols): live tool trace.** A mono, compact feed of Qloo calls (`GET /v2/insights filter.type=podcast · 412 ms · 18 results · cached`). It auto-scrolls and can be paused on hover.
-- **Category tiles** fill in as evidence lands (name chips appear with a 120 ms stagger). There's no fake progress bar, because progress comes from real node events.
-- If the user leaves and returns, the page shows the persisted state.
+### 4.3 Live research (`components/run/run-live.tsx`)
+- **Staged timeline:** Planning → Qloo research → Critique → Concepts → Claim validation, with numbered markers, a connector, the real step label and the real elapsed time per stage.
+- **Qloo queries:** 24 budget cells (labelled "a budget, not a progress bar"), plus a feed of the last 12 calls showing kind, category, result count, latency and whether it was cached or failed. These come only from public `qloo` events (`summarizeRun().recentQloo`).
+- Also shown: evidence-by-category bars, the research plan, the claim-validation result and adaptive decisions.
+- **Never shown:** percentages, model text or estimated progress. Stage changes are announced through `aria-live`. A "reconnecting" notice appears if the stream drops. The clock starts after mount.
 
-### 4.4 Report: Overview
-- Masthead: brand, market, goal, date, run status (complete or partial), and "Grounded in N Qloo results across K categories" (computed from the ledger).
-- Executive summary (LLM text with E# chips).
-- **Audience profile:** the signals used (age buckets, gender, Qloo audiences, locality) and the *Not modeled* list.
-- Banners when relevant: brand not found, partial run, unavailable endpoint.
-
-### 4.5 Report: Signals
-- **Category columns** (artists, TV, film, podcasts, brands, places): ranked lists showing rank, name and thumbnail when Qloo provides one, an affinity bar *only if affinity exists* (otherwise rank only), a popularity percentile in mono, and a lift arrow (▲3 / new).
-- **Audience lift chart** (justified: "what is specific to this audience?"). A slope or dumbbell plot of baseline rank → target rank for the top movers in a chosen category.
-- **Distinctiveness map** (justified: "where are the under-exploited levers?"). A 2-axis scatter of affinity (or rank) against popularity percentile, with the quadrants labelled and "Sondo heuristic" in the caption. Points are clickable and open the evidence drawer.
-- Empty category: a ruled box saying "No Qloo signal for this audience in Podcasts", with the query that was tried and what Sondo did next.
-
-### 4.6 Report: Strategies and comparison
-- Three strategy columns on desktop (stacked on mobile), each as an editorial card: kicker (Mainstream anchor / Distinctive niche / Cross-category bridge), title, thesis, territory, partners (with E# chips), placements, creative direction, risks, and **How to validate**.
-- **Comparison table** below: rows for primary categories, evidence count, mainstream ↔ distinctive balance (from the derived quadrants), main risk and validation effort. Cells are factual and taken from the data.
-
-### 4.7 Evidence inspection and tool trace
-- **E# chip:** mono, accent outline. Hover shows a tooltip with name, category, rank/of and affinity if present. Click opens the **drawer**.
-- **Evidence drawer** (Sheet, right side): entity name and image, category, rank/of, affinity (raw Qloo value and scale note), popularity percentile, derived metrics (labelled), the Qloo query that produced it (filter type plus signals, in readable form), a link to the trace row, and "Cited in" (which claims use it).
-- **Evidence tab:** a sortable ledger table plus the full tool trace (call, params, status, latency, cache hit, retry). This is the technical-implementation showcase.
+### 4.4 Report (`components/report/*`)
+1. **Cover:** a seeded meadow strip per run id, with the brand, market, goal and date. Below it: the status chip, "Grounded in N Qloo results across K categories" (`ledgerStats`), copy-link and new-brief actions, and the sticky section nav.
+2. **Overview:**
+   - Key findings: `keyFindings()`, strongest first and one per category, each with named E# chips.
+   - The brief, and what Qloo modeled / not modeled.
+   - Opportunities in the data.
+3. **Concepts:** a tablist (arrow keys, Home/End, `#concept-<angle>` deep links) over one editorial article per angle:
+   - the positioning and the grounding level;
+   - **The idea**, **Who it's for** and **Where it shows up** (tiered opportunities and channels);
+   - an **evidence rail**, "Why it could work" (the insight and the claims);
+   - **How it differs** (the angle's role and the categories it draws on) and **What's uncertain** (assumptions and risks).
+   - A missing angle renders as a ruled "Not written" placeholder.
+4. **Signals:**
+   - **Audience lift:** a dumbbell of baseline rank → audience rank, from `liftRows()`.
+   - **Distinctiveness:** a scatter of popularity (axis stretched toward 1, ticks at 0.9 / 0.99 / 0.999) against position in the audience query, with labelled quadrants, from `distinctivenessPoints()`.
+   - Both are labelled Sondo heuristic and have a "Show as a table" fallback. The section appears only when there is enough data.
+5. **Findings:** grouped by strength. Strong is open; moderate and weak are counted disclosures.
+6. **Evidence:** the ledger (`ledger.tsx`). The category filter and "show all" are radio and checkbox inputs read by CSS `:has()`, with no client JS. The first 12 rows show.
+7. **Method:** claim-validation counts, "What this is, and isn't", run details and the Qloo trace.
+8. **Evidence drawer:** the name, a rank meter drawn from rank/of, affinity and popularity (raw Qloo values), lift and quadrant (heuristic), the query and "Cited in".
 
 ## 5. States
 | State | Treatment |
 |---|---|
-| Loading (report fetch) | Skeleton lines matching the final layout. No spinners in content areas. |
-| Running | Timeline plus trace (4.3) |
-| Partial | Amber hairline banner naming what's missing and why. The available content still renders. |
-| Brand not found | Inline banner explaining that the strategy relies on anchors |
-| Empty category | Ruled empty box with the attempted query |
-| Endpoint unavailable | Muted note "Not available on the hackathon API". Never a stack trace. |
-| Rate-limited / quota | "Live runs are paused. Explore featured reports." The CTA still works. |
-| Validation dropped claims | A footnote counting removed unsupported claims (shows the system's rigor) |
-| Fatal error | Plain-language message, run ID in mono, retry button |
+| Loading report | Skeleton in the report's own shape (cover, meta, nav, findings, tabs) |
+| Running | The live research view (§4.3) |
+| Partial | Amber banner with the stored reasons. Concepts carry grounding badges; missing angles show "Not written". |
+| Interrupted / failed / cancelled (no report) | `PageState` with the run id, the status banner and the stages reached (from stored events), plus next actions. Nothing is shown as a finding. |
+| Brand not found | Inline warning: the research relies on the anchors and market. |
+| Not enough signal data | Signals section hidden; key findings fall back to a ruled note. |
+| Featured store unreachable | Ruled box saying so. No invented card. |
+| Rate-limited / paused | Composer notice plus a link to featured reports. |
+| 404 / error | Meadow `PageState` with a way out. Unknown report ids keep a real HTTP 404. |
 
 ## 6. Accessibility and responsiveness
-- WCAG AA contrast, including the accent on the background. Full keyboard path for the brief, chips and drawer. Visible focus rings in the accent color.
-- Charts have text equivalents (a table toggle). Color is never the only carrier: lift uses arrows and signs.
-- Breakpoints: 375 / 768 / 1280 / 1536. On mobile the trace collapses into a "Show tool calls (N)" disclosure.
+- Real tablists (concepts, landing tabs) with roving tabindex and arrow keys.
+- The drawer is a Radix Dialog: it traps focus, closes on Escape and returns focus to the chip.
+- Ledger filters are native radios. Visible focus rings everywhere. Charts have table equivalents, and lift uses ▲ and text, not colour alone.
+- Checked at 375, 768, 1280 and 1440. On mobile the concept tabs scroll horizontally, lift rows stack, and the section nav scrolls.
+- `prefers-reduced-motion` disables all animation.
 
-## 7. Design QA checklist (Phase 4)
-- [ ] No number on screen without a ledger source. Derived metrics are labelled.
-- [ ] Every chart answers its stated question and has a table fallback.
-- [ ] Featured report screenshots look good at 1280 and 375.
-- [ ] Empty, partial and error states were seen in a real run, not just in storybook.
-- [ ] No banned visual patterns (§1).
+## 7. Design QA checklist
+- [x] No number on screen without a ledger source. Derived metrics are labelled.
+- [x] Every chart answers its stated question and has a table fallback.
+- [x] Featured, partial and interrupted reports checked at 375 and 1280 with real stored runs.
+- [x] Live view checked on a real run (Phase 4 results in ROADMAP.md).
+- [x] No banned visual patterns (§1). No hydration warnings on `/` or `/new`.

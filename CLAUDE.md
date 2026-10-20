@@ -3,8 +3,13 @@
 Sondo is an autonomous cultural-intelligence strategist for the Qloo Agentic Hackathon. The deadline is **Oct 30, 2026, 11:45 pm ET**, and the internal submit target is **Oct 29, 6 pm ET**.
 Read the relevant doc before changing an area: PRODUCT.md (scope, honesty rules), QLOO_RESEARCH.md (API truth), ARCHITECTURE.md (contracts, limits), DESIGN.md (UI), ROADMAP.md (current phase), HACKATHON.md (compliance).
 
+## UI
+- Pixel Meadow, paper mode, **light-only by design** (no dark theme). Tokens live in `app/meadow.css`; page CSS uses tokens only. Follow the `pixel-meadow-ui` skill and DESIGN.md.
+- No script may mutate server-rendered DOM (reveals are CSS-only), and nothing time-dependent renders before mount, so hydration always matches.
+- Evidence tiers come only from `claimBadge` and `ideaBadge` (`lib/report/view.ts`). A creative idea must never look like a Qloo finding.
+
 ## Phase gate
-- Phases 0, 1, 1b and 2 are closed. **Phase 3 (app integration) was authorized 2026-10-19**; its results and open items are in ROADMAP.md. **Phase 4 (product design) needs explicit authorization.** Don't start a new phase without it.
+- Phases 0–3 are closed. **Phase 4 (product design) was authorized 2026-10-20**; its results are in ROADMAP.md. **Phase 5 (hardening) needs explicit authorization.** Don't start a new phase without it.
 
 ## Qloo
 - Host `https://hackathon.api.qloo.com` only. Header `X-Api-Key`. **GET with query params only** (POST fails).

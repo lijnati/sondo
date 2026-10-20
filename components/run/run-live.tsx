@@ -64,8 +64,10 @@ export function RunLive({
   const [events, setEvents] = useState<SequencedEvent[]>(initialEvents);
   const [connection, setConnection] = useState<"stream" | "poll" | "retrying">(reader ? "stream" : "poll");
   const [cancel, setCancel] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [now, setNow] = useState(() => Date.now());
-  const begun = useRef<number>(startedAt ? Date.parse(startedAt) : Date.now());
+  // The clock starts after mount: server and browser times differ, and a time read
+  // during render would not hydrate.
+  const [now, setNow] = useState<number | null>(null);
+  const begun = useRef<number | null>(startedAt ? Date.parse(startedAt) : null);
   const started = useRef(false);
   const lastSeq = useRef(initialEvents.at(-1)?.seq ?? -1);
 
@@ -149,9 +151,14 @@ export function RunLive({
 
   // Elapsed clock while running (real time since the run started).
   useEffect(() => {
-    if (finished) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    begun.current ??= Date.now();
+    const tick = () => setNow(Date.now());
+    const first = setTimeout(tick, 0);
+    const every = finished ? undefined : setInterval(tick, 1000);
+    return () => {
+      clearTimeout(first);
+      if (every) clearInterval(every);
+    };
   }, [finished]);
 
   // Hand over to the server-rendered report once the run is stored.
@@ -174,7 +181,7 @@ export function RunLive({
     }
   }
 
-  const elapsed = Math.max(0, now - begun.current);
+  const elapsed = now !== null && begun.current !== null ? Math.max(0, now - begun.current) : null;
   const budget = summary.qloo.budget || 24;
   const maxEvidence = Math.max(1, ...summary.evidence.byCategory.map((c) => c.count));
 
@@ -189,11 +196,16 @@ export function RunLive({
           <p className="live-sub">
             {finished ? (
               <>
-                Finished in <span className="tabular">{seconds(elapsed)}</span>. Opening the report… <Link href={`/r/${runId}`} className="text-link">Open it now</Link>
+                Finished{elapsed !== null ? <> in <span className="tabular">{seconds(elapsed)}</span></> : null}. Opening the report… <Link href={`/r/${runId}`} className="text-link">Open it now</Link>
               </>
             ) : (
               <>
-                Elapsed <span className="tabular">{seconds(elapsed)}</span>. Runs usually take about two minutes and stop at three. You can leave; the link keeps the report.
+                {elapsed !== null ? (
+                  <>
+                    Elapsed <span className="tabular">{seconds(elapsed)}</span>.{" "}
+                  </>
+                ) : null}
+                Runs usually take about two minutes and stop at three. You can leave; the link keeps the report.
               </>
             )}
           </p>

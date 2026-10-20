@@ -454,7 +454,7 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
           <div className="notice bad error-summary" role="alert" style={{ marginTop: 16 }}>
             <div>
               <p>Some fields need attention before Sondo can start.</p>
-              <ul>
+              <ul className="error-links">
                 {invalid.map((k) => (
                   <li key={k}>
                     <a
@@ -468,7 +468,6 @@ export function BriefForm({ liveRuns }: { liveRuns: boolean }) {
                     >
                       {FIELD_LABEL[k] ?? k}
                     </a>
-                    : {errors[k]}
                   </li>
                 ))}
               </ul>

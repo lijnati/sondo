@@ -1,7 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 
 /** The slice of an EvidenceItem the drawer shows. Values are copied from the ledger. */
 export interface EvidenceView {
@@ -35,22 +35,35 @@ const VARIANT: Record<string, string> = {
   deepen: "Adaptive follow-up query",
 };
 
-const Ctx = createContext<{ byId: Map<string, EvidenceView>; open: (id: string) => void } | null>(null);
+const Ctx = createContext<{ byId: Map<string, EvidenceView>; open: (id: string, opener: HTMLElement) => void } | null>(null);
 
 export function EvidenceProvider({ items, children }: { items: EvidenceView[]; children: ReactNode }) {
   const [byId] = useState(() => new Map(items.map((i) => [i.id, i])));
   const [openId, setOpenId] = useState<string | null>(null);
+  // The chips are not Dialog.Trigger elements, so focus is returned to the opener by hand.
+  const opener = useRef<HTMLElement | null>(null);
+  const open = (id: string, el: HTMLElement) => {
+    opener.current = el;
+    setOpenId(id);
+  };
   const item = openId ? byId.get(openId) : undefined;
   // Portal into the meadow root so its scoped styles apply. Only reached after a click.
   const container = item ? document.querySelector<HTMLElement>(".marketing") : null;
 
   return (
-    <Ctx.Provider value={{ byId, open: setOpenId }}>
+    <Ctx.Provider value={{ byId, open }}>
       {children}
       <Dialog.Root open={!!item} onOpenChange={(o) => !o && setOpenId(null)}>
         <Dialog.Portal container={container ?? undefined}>
           <Dialog.Overlay className="drawer-overlay" />
-          <Dialog.Content className="drawer" aria-describedby={undefined}>
+          <Dialog.Content
+            className="drawer"
+            aria-describedby={undefined}
+            onCloseAutoFocus={(e) => {
+              e.preventDefault();
+              opener.current?.focus();
+            }}
+          >
             {item ? (
               <>
                 <div className="drawer-head">
@@ -132,7 +145,7 @@ export function EvChip({ id, showName = false }: { id: string; showName?: boolea
   const item = ctx?.byId.get(id);
   if (!ctx || !item) return <span className="pill muted-pill">{id}</span>;
   return (
-    <button type="button" className="ev" onClick={() => ctx.open(id)} aria-label={`Evidence ${id}: ${item.name}, ${item.category}, rank ${item.rank} of ${item.of}`}>
+    <button type="button" className="ev" onClick={(e) => ctx.open(id, e.currentTarget)} aria-label={`Evidence ${id}: ${item.name}, ${item.category}, rank ${item.rank} of ${item.of}`}>
       {id}
       {showName ? <span className="ev-name">{item.name}</span> : null}
     </button>
