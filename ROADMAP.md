@@ -232,10 +232,10 @@ Totals: 4/4 completed, 1/1 degraded with a disclosed reason, 0 invalid citations
 - Unknown ids return a real 404, and an invalid brief returns 400 with field messages.
 - Time to first byte for featured reports went from 2–7 s total (functions in iad1) to 0.7–1.1 s (fra1).
 - At 375 px, `/`, `/new` and two reports have no page-level horizontal overflow; the wide items sit inside scrolling tab and nav rows.
-- **Lighthouse** on production: accessibility 100 on `/` and `/new` and 97 on a featured report, best practices 100 on all three. The report's two findings (filter count contrast, chip label mismatch) are fixed in the follow-up commit.
+- **Lighthouse** on production: accessibility 100 on `/` and `/new` and 97 on a featured report, best practices 100 on all three. The report's two findings (filter count contrast, chip label mismatch) are fixed in `c5e44a4`; rerun on production: report accessibility 100.
 - Rate limits, the global cap, concurrency, idempotency and the kill switch are verified by the PGlite and route tests (`db-runs`, `runs-api`). They were **not** exercised on production, to avoid burning the shared daily cap.
 
-**Tests:** `pnpm typecheck`, `pnpm lint` and `pnpm test` (264 tests) are green. `pnpm e2e` on the local production build: 28 passed, 2 skipped (the live test is opt-in).
+**Tests:** `pnpm typecheck`, `pnpm lint` and `pnpm test` (264 tests) are green. `pnpm e2e` on the local production build: 28 passed, 2 skipped (the live test is opt-in). The same suite against production (`E2E_BASE_URL=https://sondo.xylolabs.space`): 28 passed, 2 skipped.
 
 **Repository:** `github.com/lijnati/sondo` is **public**, the MIT license is detected in About, and the homepage is set to the production URL. The full-history secret scan found only a fake `db.example.test` URL in a test. Eval and probe summaries are metrics only. The README was rewritten and `SUBMISSION.md` was added (Devpost text plus a demo script).
 
