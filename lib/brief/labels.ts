@@ -40,6 +40,11 @@ export function categoryLabel(value: string): string {
   return key.replace(/_/g, " ");
 }
 
+/** A stored query summary ("ages 25_to_29, 30_to_34 · in Austin") with readable age buckets. */
+export function readableSignals(summary: string): string {
+  return summary.replace(/\b(24_and_younger|25_to_29|30_to_34|35_to_44|45_to_54|55_and_older)\b/g, (k) => AGE_LABEL[k as AgeBucket]);
+}
+
 export const FIELD_LABEL: Record<string, string> = {
   brandName: "Brand name",
   brandDescription: "Brand description",

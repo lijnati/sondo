@@ -9,7 +9,7 @@ Read the relevant doc before changing an area: PRODUCT.md (scope, honesty rules)
 - Evidence tiers come only from `claimBadge` and `ideaBadge` (`lib/report/view.ts`). A creative idea must never look like a Qloo finding.
 
 ## Phase gate
-- Phases 0–3 are closed. **Phase 4 (product design) was authorized 2026-10-20**; its results are in ROADMAP.md. **Phase 5 (hardening) needs explicit authorization.** Don't start a new phase without it.
+- Phases 0–4 are closed. **Phase 5 (hardening and release) was authorized and run 2026-10-27**; its verified results are in ROADMAP.md. The app is live at https://sondo.xylolabs.space (Vercel, `fra1`, deploys from `main`), and the repo `github.com/lijnati/sondo` is public. **Release freeze:** fix only release-blocking defects. Submitting on Devpost is the founder's action. Don't start a new phase without explicit authorization.
 
 ## Qloo
 - Host `https://hackathon.api.qloo.com` only. Header `X-Api-Key`. **GET with query params only** (POST fails).

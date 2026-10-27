@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { PixelScene } from "@/components/marketing/pixel-scene";
 import { ANGLES, type AgentRunResult, type ValidatedClaim, type ValidatedConcept } from "@/lib/agent/schemas";
-import { AGE_LABEL, categoryLabel, OBJECTIVE_LABEL } from "@/lib/brief/labels";
+import { AGE_LABEL, categoryLabel, OBJECTIVE_LABEL, readableSignals } from "@/lib/brief/labels";
 import {
   citationIndex,
   claimBadge,
@@ -61,7 +61,7 @@ function evidenceViews(r: AgentRunResult): EvidenceView[] {
     ...(e.derived?.newInTarget ? { newInTarget: true } : {}),
     ...(e.derived?.quadrant ? { quadrant: e.derived.quadrant } : {}),
     variant: e.query.variant,
-    signalSummary: e.query.signalSummary,
+    signalSummary: readableSignals(e.query.signalSummary),
     tags: e.entity.tags.slice(0, 6).map((t) => t.name),
     citedIn: cited.get(e.id) ?? [],
   }));

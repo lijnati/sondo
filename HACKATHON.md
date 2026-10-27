@@ -75,12 +75,12 @@ Required by both the rules and the overview page:
 | C8 | Overclaiming (affinity presented as purchase intent or ROI). | Medium (credibility) | Language rules in PRODUCT.md §6, plus a validator that blocks forbidden claim patterns. |
 
 ## 8. Submission checklist (complete on Oct 29)
-- [ ] Production URL loads without login on desktop and mobile. A brand-new brief completes end to end.
-- [ ] Featured example reports load instantly (from cache).
-- [ ] Public GitHub repo, with `LICENSE` (MIT) shown in About.
-- [ ] README covers the problem, what makes it Qloo-powered, architecture diagram, Qloo endpoints used, run instructions, env vars and limitations.
-- [ ] No secrets in git history (`git log -p | grep -i "x-api-key\|QLOO_API_KEY="` is clean). No raw Qloo payloads committed.
-- [ ] Devpost text description, with sections mapped to the 4 criteria. Screenshots attached. Optional 2-min video.
-- [ ] Testing instructions: "No login. Click any example or create a brief."
-- [ ] Rate limits and quota fallback verified. Qloo key confirmed valid through Nov 16.
+- [x] Production URL loads without login on desktop and mobile. A brand-new brief completes end to end (Oct 27, run `Fla2JFlK1e1C`, completed).
+- [x] Featured example reports load from the database with zero Qloo calls (time to first byte 0.7–1.1 s).
+- [x] Public GitHub repo, with `LICENSE` (MIT) shown in About (Oct 27).
+- [x] README covers the problem, what makes it Qloo-powered, architecture diagram, Qloo endpoints used, run instructions, env vars and limitations.
+- [x] No secrets in git history (a full `git log -p --all` scan; the only hit is a fake `db.example.test` test URL). No raw Qloo payloads committed.
+- [ ] Devpost text description (drafted in [SUBMISSION.md](SUBMISSION.md)). Screenshots still to attach. Optional 2-min video (script in SUBMISSION.md).
+- [x] Testing instructions: "No login. Click any example or create a brief." (SUBMISSION.md demo steps, plus the landing FAQ.)
+- [~] Rate limits and kill switch verified by tests (PGlite and route), not on production. Qloo key validity through Nov 16 not yet confirmed with Qloo; the quota request is still to send.
 - [ ] Submitted on Devpost before **Oct 29, 6:00 pm ET**. Confirmation screenshot saved.

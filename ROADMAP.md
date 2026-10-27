@@ -1,6 +1,6 @@
 # ROADMAP.md — Phase plan to submission
 
-Today is **Tue 2026-10-20**. Hard deadline: **Fri Oct 30, 11:45 pm ET**. Internal submission target: **Thu Oct 29, 6:00 pm ET**. Oct 30 is a buffer with no feature work.
+Last updated **Tue 2026-10-27**. Hard deadline: **Fri Oct 30, 11:45 pm ET**. Internal submission target: **Thu Oct 29, 6:00 pm ET**. Oct 30 is a buffer with no feature work.
 Order of investment: **Qloo integration → agent → app plumbing → design → hardening → submission.** A deployed URL exists from Phase 1 onward.
 
 | Phase | Dates | Theme | Exit gate |
@@ -11,7 +11,7 @@ Order of investment: **Qloo integration → agent → app plumbing → design �
 | 2 | Oct 17–19 | Agent workflow | ✅ Closed Oct 19. Live `pnpm eval` on 5 briefs with the free model: 4/4 completed, brief 5 degraded to an explained partial, 0 invalid citations, 0 unsupported evidence claims, all budgets held (see Phase 2 results). Phase 3 awaits approval. |
 | 3 | Oct 19 | App integration | ✅ Built and verified locally Oct 19 against live Qloo, the live model and Neon: brief → live stream → persisted report permalink, 3 verified featured reports. Production deploy awaits approval (see Phase 3 results). |
 | 4 | Oct 20 | Product design and UX | ✅ Built and verified Oct 20 (see Phase 4 results). Light-only by founder decision. Phase 5 awaits approval. |
-| 5 | Oct 27–28 | Hardening and verification | E2E green. Failure injection handled. Quota protections verified. |
+| 5 | Oct 27–28 | Hardening and verification | ✅ Oct 27: deployed at https://sondo.xylolabs.space (fra1), repo public, live eval 4/4 + 1/1 after fixes, a live production run completed (see Phase 5 results). Devpost submission awaits the founder. |
 | 6 | Oct 29 | Documentation and submission | Devpost submitted, with the checklist in HACKATHON.md §8 complete |
 
 ---
@@ -199,6 +199,54 @@ Totals: 0 invalid citations, 0 mismatched citations left in output, 0 evidence c
 **Deliverables:** 3 Playwright smoke tests against production; failure-injection tests (forced 429, 403 on optional endpoints, LLM schema failure, timeout); re-run `pnpm eval`; a secrets scan of the git history; a check that no Qloo payloads are in the repo; a cache warm-up of the featured briefs; a Qloo quota-increase request sent via Discord #api-help with details.
 **Verification:** all tests green; every injected failure produces the documented UX; the eval metrics still pass.
 **Done when:** a cold production visitor on mobile and desktop can complete the flow, and every failure path ends in a designed state.
+
+### Phase 5 results (2026-10-27)
+*Authorized Oct 27. Branch `phase-5-hardening`, fast-forwarded to `main`. Production deploys from `main` on Vercel (project `sondo`, functions in `fra1` next to Neon eu-central-1; they were in `iad1` before).*
+
+**Live eval, Oct 27 baseline** (before fixes; `scripts/output/eval-summary-2026-10-27-baseline.json`): **2/4 completed**, 1/1 degraded, 0 invalid citations, all budgets held. This is below the Phase 2 bar. Two root causes:
+- `liquid-death-la` and `unknown-brand`: the strategy call hit the 60 s per-call timeout (kind `provider`). The retry only covered `no_output`, so those runs returned research only.
+- `sneakers-nyc`: the model cited one `E#` for two of its concepts, so they were honestly partial.
+
+**Fixes** (`lib/agent/orchestrator.ts`, 3 new unit tests; the validator, grounding rule and integrity gate are unchanged):
+1. The strategy retry with a compact digest now also covers provider errors and timeouts. It runs only if a full model call plus 10 s still fits before the hard deadline.
+2. After a repair, the original and repaired drafts both go through `finalizeStrategy`, and the better-grounded one is kept (ties go to the repair).
+
+**Live eval, Oct 27 post-fix** (a new full run; `scripts/output/eval-summary.json`; live Qloo, no cache; `nvidia/nemotron-3.5-lightning-free`):
+
+| Brief | Status | Concepts g/p/i | Ev / hyp claims | Citations (invalid) | Dropped mismatches | Max overlap | Qloo | Model (failed) | Tokens in/out | Adaptive rounds | Evidence | Time |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| coldbrew-austin | completed ✅ | 3/0/0 | 15 / 0 | 33 (0) | 2 | 0.33 | 22/24 | 4/4 (0) | 15.5k / 18.4k | 2 | 107 | 123 s |
+| hotel-lisbon | completed ✅ | 3/0/0 | 9 / 0 | 32 (0) | 0 | 0.44 | 18/24 | 3/4 (0) | 9.1k / 11.3k | 2 | 109 | 80 s |
+| sneakers-nyc | completed ✅ | 3/0/0 | 9 / 0 | 27 (0) | 1 | 0.14 | 18/24 | 4/4 (0) | 16.8k / 19.0k | 2 | 126 | 115 s |
+| liquid-death-la | completed ✅ | 3/0/0 | 9 / 0 | 24 (0) | 1 | 0.20 | 12/24 | 3/4 (0) | 9.8k / 19.4k | 1 | 70 | 122 s |
+| unknown-brand | partial ✅ (expected) | 3/0/0 | 7 / 2 | 24 (0) | 0 | 0.17 | 10/24 | 4/4 (0) | 11.6k / 17.7k | 1 | 40 | 105 s |
+
+Totals: 4/4 completed, 1/1 degraded with a disclosed reason, 0 invalid citations, 0 mismatched citations left, 0 evidence claims without a relevant citation, every budget held, $0 (gateway-reported), p50 115 s and max 123 s. The keep-the-better-draft rule fired on 3 of the 5 runs. The model had **0 failed calls in this run**, so the timeout retry is proven by unit tests but not yet live. One clean run is evidence, not a stability guarantee.
+
+**Production verification** (https://sondo.xylolabs.space, deployment of `5566c9e`):
+- A fresh brief (Hotel · Lisbon) was submitted through the real UI in Chrome and **completed** on production as run `Fla2JFlK1e1C`: 99 Qloo results across 8 categories, about 80 s after the reload.
+- Reloading mid-run recovered the full live state.
+- The permalink renders server-side; the `E#` drawer opens, and Escape returns focus to its chip. There were no console errors.
+- The 57 public events of that run contain no Qloo URNs or params, keys, DB strings, token counts or model-written reasons.
+- There were 0 runtime errors in Vercel over the last 2 hours.
+- Unknown ids return a real 404, and an invalid brief returns 400 with field messages.
+- Time to first byte for featured reports went from 2–7 s total (functions in iad1) to 0.7–1.1 s (fra1).
+- At 375 px, `/`, `/new` and two reports have no page-level horizontal overflow; the wide items sit inside scrolling tab and nav rows.
+- **Lighthouse** on production: accessibility 100 on `/` and `/new` and 97 on a featured report, best practices 100 on all three. The report's two findings (filter count contrast, chip label mismatch) are fixed in the follow-up commit.
+- Rate limits, the global cap, concurrency, idempotency and the kill switch are verified by the PGlite and route tests (`db-runs`, `runs-api`). They were **not** exercised on production, to avoid burning the shared daily cap.
+
+**Tests:** `pnpm typecheck`, `pnpm lint` and `pnpm test` (264 tests) are green. `pnpm e2e` on the local production build: 28 passed, 2 skipped (the live test is opt-in).
+
+**Repository:** `github.com/lijnati/sondo` is **public**, the MIT license is detected in About, and the homepage is set to the production URL. The full-history secret scan found only a fake `db.example.test` URL in a test. Eval and probe summaries are metrics only. The README was rewritten and `SUBMISSION.md` was added (Devpost text plus a demo script).
+
+**Judge-facing copy:** the landing FAQ no longer says "in development". It now explains how to try Sondo, how long a run takes, the daily limit and what "partial" means. The footer links to the source. Drawer queries show "35–44" instead of `35_to_44`.
+
+**Known remaining issues (by severity)**
+1. The free model is still the main risk. The baseline run shows it can time out or under-cite; a judge's fresh run can come back `partial` (honestly labelled). A stronger `SONDO_MODEL` needs paid gateway credits (tested Oct 27: every other free model is paywalled or unavailable).
+2. Concept overlap exceeded PRODUCT.md's 0.30 target on 2 of 5 briefs (0.33, 0.44). It's flagged for repair but not enforced afterwards, and keep-the-better-draft ranks grounding above overlap.
+3. Reports ship 0.3–0.35 MB of HTML. Time to first byte is fast, but full download is slow on poor connections.
+4. During client navigation from `/new` to a live run, the tab title stays "New brief · Sondo" until reload.
+5. On mobile, concept tab names truncate inside a scrolling row (from Phase 4).
 
 ## Phase 6: Documentation and submission (Oct 29)
 **Deliverables:** README (problem, Qloo-powered explanation, architecture diagram, endpoints used, run instructions, env, limitations, mapping to the criteria), Devpost description, screenshots, optional 2-min video, testing instructions ("no login"), then **submit by 6:00 pm ET**. Run the HACKATHON.md §8 checklist.

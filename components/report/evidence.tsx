@@ -145,9 +145,9 @@ export function EvChip({ id, showName = false }: { id: string; showName?: boolea
   const item = ctx?.byId.get(id);
   if (!ctx || !item) return <span className="pill muted-pill">{id}</span>;
   return (
-    <button type="button" className="ev" onClick={(e) => ctx.open(id, e.currentTarget)} aria-label={`Evidence ${id}: ${item.name}, ${item.category}, rank ${item.rank} of ${item.of}`}>
+    <button type="button" className="ev" onClick={(e) => ctx.open(id, e.currentTarget)} aria-label={`${id} ${item.name}: evidence, ${item.category}, rank ${item.rank} of ${item.of}`}>
       {id}
-      {showName ? <span className="ev-name">{item.name}</span> : null}
+      {showName ? <>{" "}<span className="ev-name">{item.name}</span></> : null}
     </button>
   );
 }

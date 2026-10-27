@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { Brief } from "@/lib/agent/brief";
+import { readableSignals } from "@/lib/brief/labels";
 import { briefErrors } from "@/lib/brief/messages";
 
 const valid = {
@@ -43,5 +44,12 @@ describe("briefErrors", () => {
     expect(errorsFor({ ...valid, market: undefined }).market).toBe("Market is required.");
     expect(errorsFor({ ...valid, market: "" }).market).toBe("Market is required.");
     expect(errorsFor({ ...valid, market: "X" }).market).toBe("Market needs at least 2 characters.");
+  });
+});
+
+describe("readableSignals", () => {
+  it("turns stored age bucket keys into display labels and leaves the rest alone", () => {
+    expect(readableSignals("Fixture Hotel One · ages 35_to_44, 24_and_younger · in Lisbon")).toBe("Fixture Hotel One · ages 35–44, 24 and younger · in Lisbon");
+    expect(readableSignals("in Austin")).toBe("in Austin");
   });
 });

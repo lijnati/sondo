@@ -972,7 +972,6 @@
   color: inherit;
   font-family: var(--font-mono);
   font-size: 11px;
-  opacity: 0.75;
 }
 
 .marketing .filter-pill:hover {
