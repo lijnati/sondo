@@ -55,6 +55,11 @@ const STATIC_LIMITATIONS = [
   "Campaign concepts are hypotheses grounded in affinity data; validate them before committing budget.",
 ];
 
+/** Headroom a strategy retry needs beyond one model call, for validation and the final write. */
+const RETRY_MARGIN_MS = 10_000;
+
+const groundedCount = (concepts: readonly { grounding: string }[]) => concepts.filter((c) => c.grounding === "grounded").length;
+
 /** Violations the single repair call should fix (auto-citation is handled deterministically). */
 const REPAIRABLE: ReadonlySet<Violation["code"]> = new Set([
   "unknown_evidence",
@@ -185,8 +190,11 @@ export async function runAgent(briefInput: unknown, deps: AgentDeps, opts: RunOp
           if (err instanceof AgentModelError && err.kind === "aborted") throw err;
           const why = err instanceof AgentModelError ? `${err.kind}: ${err.message}` : "error";
           // A strategy is worth more than a repair: spend the repair call on one retry
-          // with a compact evidence digest (live: the free model sometimes fails to submit).
-          if (err instanceof AgentModelError && err.kind === "no_output" && tracker.llmCallsLeft() >= 1) {
+          // with a compact evidence digest (live: the free model sometimes fails to submit
+          // or times out). Only when a full model call still fits before the hard deadline.
+          const retryable = err instanceof AgentModelError && (err.kind === "no_output" || err.kind === "provider");
+          const timeLeft = tracker.budget.hardDeadlineMs - tracker.elapsedMs() >= tracker.budget.llmTimeoutMs + RETRY_MARGIN_MS;
+          if (retryable && timeLeft && tracker.llmCallsLeft() >= 1) {
             warnings.push(`Strategy model call failed (${why}); retried once with a compact evidence digest.`);
             try {
               const out = await strategize(ledgerDigest(session.ledger, { perCategory: 5, max: 50 }));
@@ -225,7 +233,18 @@ export async function runAgent(briefInput: unknown, deps: AgentDeps, opts: RunOp
             }
           });
         }
-        const final = await stage("validateClaims", async () => finalizeStrategy(current, ctx));
+        const final = await stage("validateClaims", async () => {
+          const out = finalizeStrategy(current, ctx);
+          if (current === draft) return out;
+          // A repair can come back thinner than the draft. Both pass the same validator,
+          // so keep whichever is better grounded (ties go to the repair).
+          const original = finalizeStrategy(draft, ctx);
+          if (groundedCount(original.concepts) > groundedCount(out.concepts)) {
+            warnings.push("The repaired draft was less grounded than the original; kept the original draft (both validated).");
+            return original;
+          }
+          return out;
+        });
         concepts = final.concepts;
         opportunities = final.opportunities;
         validation = { ...final.summary, repairAttempted: repaired };

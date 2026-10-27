@@ -1,0 +1,348 @@
+{
+  "generatedAt": "2026-10-27T07:52:13.404Z",
+  "model": "nvidia/nemotron-3.5-lightning-free",
+  "qlooMode": "live-no-cache",
+  "limits": {
+    "qlooCalls": 24,
+    "llmCalls": 4,
+    "adaptiveRounds": 2,
+    "hardDeadlineMs": 180000,
+    "runCostLimitUsd": 0.15
+  },
+  "totals": {
+    "completedAsExpected": "2/4",
+    "degradedGracefully": "1/1",
+    "invalidCitations": 0,
+    "residualMismatches": 0,
+    "unsupportedEvidenceClaims": 0,
+    "mismatchedCitationsDropped": 5,
+    "allBudgetsHeld": true,
+    "qlooCalls": 71,
+    "llmCalls": 16,
+    "estimatedCostUsd": 0,
+    "p50DurationMs": 107806,
+    "maxDurationMs": 147669
+  },
+  "runs": [
+    {
+      "brief": "coldbrew-austin",
+      "expect": "complete",
+      "status": "completed",
+      "pass": true,
+      "reasons": [
+        "completed with three grounded concepts"
+      ],
+      "concepts": 3,
+      "grounding": {
+        "grounded": 3,
+        "partial": 0,
+        "insufficient_evidence": 0
+      },
+      "claims": {
+        "total": 6,
+        "evidence": 6,
+        "hypothesis": 0,
+        "direct": 6,
+        "contextual": 0,
+        "weak": 0
+      },
+      "citations": {
+        "total": 23,
+        "invalid": 0,
+        "residualMismatches": 0
+      },
+      "unsupportedEvidenceClaims": 0,
+      "validation": {
+        "violationsPreFix": 8,
+        "repairAttempted": false,
+        "autoAttached": 1,
+        "downgraded": 0,
+        "removed": 3,
+        "mismatchedDropped": 4
+      },
+      "maxConceptOverlap": 0.33,
+      "qloo": {
+        "calls": 19,
+        "budget": 24,
+        "cached": 0,
+        "errors": 0
+      },
+      "llm": {
+        "calls": 4,
+        "budget": 4,
+        "failedCalls": 1,
+        "inputTokens": 7965,
+        "outputTokens": 11401,
+        "costUsd": 0,
+        "costSource": "gateway"
+      },
+      "adaptiveRounds": 2,
+      "durationMs": 130058,
+      "evidenceItems": 102,
+      "unresolvedAnchorsDisclosed": false,
+      "budgets": {
+        "qloo": true,
+        "llm": true,
+        "adaptiveRounds": true,
+        "wallClock": true,
+        "cost": true
+      }
+    },
+    {
+      "brief": "hotel-lisbon",
+      "expect": "complete",
+      "status": "completed",
+      "pass": true,
+      "reasons": [
+        "completed with three grounded concepts"
+      ],
+      "concepts": 3,
+      "grounding": {
+        "grounded": 3,
+        "partial": 0,
+        "insufficient_evidence": 0
+      },
+      "claims": {
+        "total": 12,
+        "evidence": 8,
+        "hypothesis": 4,
+        "direct": 8,
+        "contextual": 4,
+        "weak": 0
+      },
+      "citations": {
+        "total": 41,
+        "invalid": 0,
+        "residualMismatches": 0
+      },
+      "unsupportedEvidenceClaims": 0,
+      "validation": {
+        "violationsPreFix": 2,
+        "repairAttempted": true,
+        "autoAttached": 2,
+        "downgraded": 0,
+        "removed": 0,
+        "mismatchedDropped": 1
+      },
+      "maxConceptOverlap": 0.25,
+      "qloo": {
+        "calls": 19,
+        "budget": 24,
+        "cached": 0,
+        "errors": 0
+      },
+      "llm": {
+        "calls": 4,
+        "budget": 4,
+        "failedCalls": 1,
+        "inputTokens": 8318,
+        "outputTokens": 11153,
+        "costUsd": 0,
+        "costSource": "gateway"
+      },
+      "adaptiveRounds": 2,
+      "durationMs": 147669,
+      "evidenceItems": 87,
+      "unresolvedAnchorsDisclosed": false,
+      "budgets": {
+        "qloo": true,
+        "llm": true,
+        "adaptiveRounds": true,
+        "wallClock": true,
+        "cost": true
+      }
+    },
+    {
+      "brief": "sneakers-nyc",
+      "expect": "complete",
+      "status": "partial",
+      "pass": false,
+      "reasons": [
+        "expected completed, got partial"
+      ],
+      "concepts": 3,
+      "grounding": {
+        "grounded": 1,
+        "partial": 2,
+        "insufficient_evidence": 0
+      },
+      "claims": {
+        "total": 9,
+        "evidence": 9,
+        "hypothesis": 0,
+        "direct": 8,
+        "contextual": 1,
+        "weak": 0
+      },
+      "citations": {
+        "total": 16,
+        "invalid": 0,
+        "residualMismatches": 0
+      },
+      "unsupportedEvidenceClaims": 0,
+      "validation": {
+        "violationsPreFix": 2,
+        "repairAttempted": true,
+        "autoAttached": 1,
+        "downgraded": 0,
+        "removed": 0,
+        "mismatchedDropped": 0
+      },
+      "maxConceptOverlap": 0,
+      "qloo": {
+        "calls": 13,
+        "budget": 24,
+        "cached": 0,
+        "errors": 0
+      },
+      "llm": {
+        "calls": 3,
+        "budget": 4,
+        "failedCalls": 0,
+        "inputTokens": 10911,
+        "outputTokens": 20858,
+        "costUsd": 0,
+        "costSource": "gateway"
+      },
+      "adaptiveRounds": 1,
+      "durationMs": 107806,
+      "evidenceItems": 90,
+      "unresolvedAnchorsDisclosed": false,
+      "budgets": {
+        "qloo": true,
+        "llm": true,
+        "adaptiveRounds": true,
+        "wallClock": true,
+        "cost": true
+      }
+    },
+    {
+      "brief": "liquid-death-la",
+      "expect": "complete",
+      "status": "partial",
+      "pass": false,
+      "reasons": [
+        "expected completed, got partial"
+      ],
+      "concepts": 0,
+      "grounding": {
+        "grounded": 0,
+        "partial": 0,
+        "insufficient_evidence": 0
+      },
+      "claims": {
+        "total": 0,
+        "evidence": 0,
+        "hypothesis": 0,
+        "direct": 0,
+        "contextual": 0,
+        "weak": 0
+      },
+      "citations": {
+        "total": 0,
+        "invalid": 0,
+        "residualMismatches": 0
+      },
+      "unsupportedEvidenceClaims": 0,
+      "validation": {
+        "violationsPreFix": 0,
+        "repairAttempted": false,
+        "autoAttached": 0,
+        "downgraded": 0,
+        "removed": 0,
+        "mismatchedDropped": 0
+      },
+      "maxConceptOverlap": null,
+      "qloo": {
+        "calls": 12,
+        "budget": 24,
+        "cached": 0,
+        "errors": 0
+      },
+      "llm": {
+        "calls": 2,
+        "budget": 4,
+        "failedCalls": 1,
+        "inputTokens": 1274,
+        "outputTokens": 1916,
+        "costUsd": 0,
+        "costSource": "gateway"
+      },
+      "adaptiveRounds": 1,
+      "durationMs": 95478,
+      "evidenceItems": 70,
+      "unresolvedAnchorsDisclosed": false,
+      "budgets": {
+        "qloo": true,
+        "llm": true,
+        "adaptiveRounds": true,
+        "wallClock": true,
+        "cost": true
+      }
+    },
+    {
+      "brief": "unknown-brand",
+      "expect": "degrade",
+      "status": "partial",
+      "pass": true,
+      "reasons": [
+        "degraded to partial and disclosed why"
+      ],
+      "concepts": 0,
+      "grounding": {
+        "grounded": 0,
+        "partial": 0,
+        "insufficient_evidence": 0
+      },
+      "claims": {
+        "total": 0,
+        "evidence": 0,
+        "hypothesis": 0,
+        "direct": 0,
+        "contextual": 0,
+        "weak": 0
+      },
+      "citations": {
+        "total": 0,
+        "invalid": 0,
+        "residualMismatches": 0
+      },
+      "unsupportedEvidenceClaims": 0,
+      "validation": {
+        "violationsPreFix": 0,
+        "repairAttempted": false,
+        "autoAttached": 0,
+        "downgraded": 0,
+        "removed": 0,
+        "mismatchedDropped": 0
+      },
+      "maxConceptOverlap": null,
+      "qloo": {
+        "calls": 8,
+        "budget": 24,
+        "cached": 0,
+        "errors": 0
+      },
+      "llm": {
+        "calls": 3,
+        "budget": 4,
+        "failedCalls": 1,
+        "inputTokens": 3414,
+        "outputTokens": 2132,
+        "costUsd": 0,
+        "costSource": "gateway"
+      },
+      "adaptiveRounds": 1,
+      "durationMs": 91422,
+      "evidenceItems": 30,
+      "unresolvedAnchorsDisclosed": true,
+      "budgets": {
+        "qloo": true,
+        "llm": true,
+        "adaptiveRounds": true,
+        "wallClock": true,
+        "cost": true
+      }
+    }
+  ]
+}

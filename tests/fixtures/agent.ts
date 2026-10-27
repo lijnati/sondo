@@ -112,6 +112,8 @@ export interface ModelScript {
   repair?: object | ((prompt: string) => unknown);
   /** Throw a provider-style error for these stages. */
   failStages?: Stage[];
+  /** Throw a provider-style error on the first call of these stages only (live: a model timeout). */
+  failOnce?: Stage[];
   /** On the first call of these stages, answer in prose instead of submitting the tool (live free-model behavior). */
   noSubmitOnce?: Stage[];
 }
@@ -129,6 +131,7 @@ function stageOf(system: string, toolNames: string[]): Stage {
 export function scriptedModel(script: ModelScript) {
   const seen: { stage: Stage; prompt: string }[] = [];
   const skipped = new Set<Stage>();
+  const failed = new Set<Stage>();
   const model = new MockLanguageModelV4({
     doGenerate: async (options) => {
       const system = options.prompt.filter((m) => m.role === "system").map((m) => (typeof m.content === "string" ? m.content : "")).join("\n");
@@ -140,7 +143,9 @@ export function scriptedModel(script: ModelScript) {
       const toolNames = (options.tools ?? []).map((t) => t.name);
       const stage = stageOf(system, toolNames);
       seen.push({ stage, prompt: user });
-      if (script.failStages?.includes(stage)) {
+      const failNow = script.failOnce?.includes(stage) && !failed.has(stage);
+      if (failNow) failed.add(stage);
+      if (script.failStages?.includes(stage) || failNow) {
         const { APICallError } = await import("ai");
         throw new APICallError({ message: "synthetic upstream failure", url: "https://gateway.example.test", requestBodyValues: {}, statusCode: 503, isRetryable: false });
       }

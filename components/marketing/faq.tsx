@@ -22,8 +22,8 @@ const faqs = [
     a: "The project is open source under the MIT License. This build has no accounts and no billing. Live Qloo calls need a hackathon API key and the agent needs a model key. Both stay on the server.",
   },
   {
-    q: "Where is this in the hackathon?",
-    a: "Sondo is in development for the Qloo Agentic Hackathon 2026. The Qloo data layer, the agent engine, live runs and shareable reports are built. Visual polish and hardening come next.",
+    q: "How do I try it?",
+    a: "No login. Open a featured report to see a finished run, or build a brief and watch the agent research it live. A run takes about two to three minutes and keeps going if you leave; its report link works once it finishes. Each visitor gets a few live runs a day to protect the shared Qloo quota. A run marked partial could not ground all three concepts, and the report says why.",
   },
 ] as const;
 

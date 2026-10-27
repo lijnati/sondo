@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-// The repository link is added once the public GitHub repo exists (ROADMAP Phase 1b).
+const REPO_URL = "https://github.com/lijnati/sondo";
+
 export function SiteFooter() {
   return (
     <footer className="site">
@@ -21,6 +22,7 @@ export function SiteFooter() {
             <Link href="/#principles">What it is</Link>
             <Link href="/#faq">FAQ</Link>
             <Link href="/new">New brief</Link>
+            <a href={REPO_URL}>Source on GitHub</a>
           </nav>
         </div>
         <div className="foot-bot">

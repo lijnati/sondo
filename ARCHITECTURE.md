@@ -38,7 +38,7 @@ Run Orchestrator (Node runtime, Fluid Compute, maxDuration 300s)
 
 **Concurrency and pacing:** at most 3 concurrent Qloo requests, with request starts spaced ≥ 250 ms apart. The original plan said 4, but live runs hit 429s without spacing (QLOO_RESEARCH.md §10).
 
-**Retries:** Qloo gets 1 retry on 429/5xx/timeout (honoring `Retry-After`, capped at 10 s, else a 1.5 s backoff). **0 retries on 400/401/403/404.** On 401 the whole run aborts and an operator alert is logged. LLM gets 1 retry on transport errors. Schema failures go to `repair`, not to a blind retry.
+**Retries:** Qloo gets 1 retry on 429/5xx/timeout (honoring `Retry-After`, capped at 10 s, else a 1.5 s backoff). **0 retries on 400/401/403/404.** On 401 the whole run aborts and an operator alert is logged. LLM gets 1 retry on transport errors. Schema failures go to `repair`, not to a blind retry. Exception: if the **strategy** call fails (no submission, provider error or per-call timeout), the repair call is spent on one retry with a compact evidence digest, but only if a full model call (`llmTimeoutMs` plus 10 s) still fits before the hard deadline. After a repair, the original and repaired drafts both go through `finalizeStrategy`, and the one with more grounded concepts is kept (ties go to the repair).
 
 **Why this shape:** a single orchestrator with three LLM decision points is enough to be clearly *agentic*. The agent plans, chooses tools adaptively based on intermediate results, self-checks and repairs. It also stays deterministic enough to test, budget and audit. Multiple autonomous agents would add latency, cost and failure modes without adding evidence quality.
 

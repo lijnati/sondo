@@ -217,6 +217,40 @@ describe("agent run: failures, budgets and cancellation", () => {
     expect(result.usage.llm.calls).toBeLessThanOrEqual(4);
   });
 
+  it("retries the strategy once after a provider error or timeout", async () => {
+    const { result, seen } = await run({ failOnce: ["strategize"] });
+    expect(seen.filter((x) => x.stage === "strategize")).toHaveLength(2);
+    expect(result.concepts).toHaveLength(3);
+    expect(result.warnings.join(" ")).toMatch(/Strategy model call failed \(provider.*retried once/);
+    expect(result.usage.llm.calls).toBeLessThanOrEqual(4);
+  });
+
+  it("does not retry the strategy when a full model call no longer fits before the deadline", async () => {
+    const { result, seen } = await run({ failOnce: ["strategize"] }, {}, { hardDeadlineMs: 65_000, llmTimeoutMs: 60_000 });
+    expect(seen.filter((x) => x.stage === "strategize")).toHaveLength(1);
+    expect(result.status).toBe("partial");
+    expect(result.concepts).toEqual([]);
+  });
+
+  it("keeps the original draft when the repair comes back less grounded", async () => {
+    const draft = (p: string) => {
+      const s = groundedStrategy(p);
+      s.concepts[0]!.claims.push({ text: "The audience loves an invented festival.", kind: "evidence", evidenceIds: ["E9999"] });
+      return s;
+    };
+    const thin = (p: string) => {
+      const s = groundedStrategy(p);
+      // Schema-valid, but every insight is a hypothesis, so no concept can be grounded.
+      for (const c of s.concepts) c.culturalInsight = { ...c.culturalInsight, kind: "hypothesis" };
+      return s;
+    };
+    const { result, seen } = await run({ strategize: draft, repair: thin });
+    expect(seen.map((s) => s.stage)).toContain("repair");
+    expect(result.concepts.every((c) => c.grounding === "grounded")).toBe(true);
+    expect(result.warnings.join(" ")).toMatch(/kept the original draft/);
+    expect(allClaims(result).flatMap((c) => c.evidenceIds)).not.toContain("E9999");
+  });
+
   it("returns research only (partial) when the strategy model fails", async () => {
     const { result } = await run({ failStages: ["strategize"] });
     expect(result.status).toBe("partial");
