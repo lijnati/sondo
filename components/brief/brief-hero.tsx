@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 
 import { PixelScene, type SceneCritter } from "@/components/marketing/pixel-scene";
+import { BrandLogo } from "@/components/shared/brand-logo";
+import { GithubLink } from "@/components/shared/github-link";
 
 const warmMeadowSky = ["#3d78b8", "#6f9ccc", "#e2c0ae", "#f3cba6", "#f8d6ae"];
 
@@ -25,8 +27,7 @@ export function BriefHero() {
       />
       <div className="sky-nav">
         <Link href="/" className="brand" aria-label="Sondo home">
-          <span className="brand-mark" aria-hidden="true" />
-          Sondo
+          <BrandLogo />
         </Link>
         <nav aria-label="Brief">
           <a href="#composer">Your brief</a>
@@ -34,6 +35,7 @@ export function BriefHero() {
           <Link href="/#how-it-works">How it works</Link>
         </nav>
         <div className="sky-logins">
+          <GithubLink />
           <Link className="btn btn-sm btn-sheet" href="/">
             Home <span className="i i-ne" aria-hidden="true">↗</span>
           </Link>

@@ -130,12 +130,15 @@
   letter-spacing: -0.04em;
 }
 
-.marketing .brand-mark {
-  width: 12px;
-  height: 12px;
-  background: var(--butter);
-  border-radius: 3px;
-  box-shadow: 0 0 0 4px rgba(255, 228, 107, 0.16);
+/* The Sondo lockup (components/shared/brand-logo.tsx), sized by height; colour follows the nav. */
+.marketing .brand-logo {
+  display: block;
+  width: auto;
+  height: 26px;
+}
+
+.marketing .foot-brand .brand-logo {
+  height: 30px;
 }
 
 .marketing .sky-nav nav {
@@ -156,6 +159,8 @@
 
 .marketing .sky-logins {
   display: flex;
+  gap: 6px;
+  align-items: center;
   justify-self: end;
 }
 
@@ -929,6 +934,10 @@
 
   .marketing .brand {
     font-size: 20px;
+  }
+
+  .marketing .brand-logo {
+    height: 23px;
   }
 
   .marketing .critter {

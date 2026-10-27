@@ -273,6 +273,33 @@
   transform: translate(2px, -2px);
 }
 
+/* Icon-only GitHub link in the navs; inherits the nav's ink (white on the sky, green on paper). */
+.marketing .gh-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 39px;
+  height: 39px;
+  color: inherit;
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+.marketing .gh-link:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.marketing .gh-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.marketing .gh-text {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
 .marketing .text-link {
   font-size: 13px;
   color: var(--ink);

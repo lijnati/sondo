@@ -2,8 +2,8 @@ import type { CSSProperties } from "react";
 
 const faqs = [
   {
-    q: "What is Qloo?",
-    a: "Qloo keeps a cultural graph of how taste connects across music, film, TV, podcasts, books, brands and places. Sondo reads that graph through the hackathon API. Search resolves names. Insights return cross-category affinity, tags and demographics. Sondo does not add a second data source.",
+    q: "What is Sondo?",
+    a: "Sondo is a cultural-intelligence strategist for brand and agency teams. You give it a brief: your brand, your audience, your market and a few things that audience already loves. It researches what over-indexes for that audience across music, film, TV, podcasts, books, brands and places, then writes three different campaign concepts. Every claim links to the evidence behind it, and creative bets are labelled as hypotheses.",
   },
   {
     q: "Where does the data come from?",

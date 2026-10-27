@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-const REPO_URL = "https://github.com/lijnati/sondo";
+import { BrandLogo } from "./brand-logo";
+import { GithubLink } from "./github-link";
 
 export function SiteFooter() {
   return (
@@ -9,8 +10,7 @@ export function SiteFooter() {
         <div className="foot-top">
           <div>
             <Link href="/" className="brand foot-brand" aria-label="Sondo home">
-              <span className="brand-mark" aria-hidden="true" />
-              Sondo
+              <BrandLogo />
             </Link>
             <p className="muted" style={{ marginTop: 10, maxWidth: "36ch" }}>
               Cultural affinity research for campaign strategy. Powered by Qloo&apos;s cultural graph.
@@ -22,7 +22,7 @@ export function SiteFooter() {
             <Link href="/#principles">What it is</Link>
             <Link href="/#faq">FAQ</Link>
             <Link href="/new">New brief</Link>
-            <a href={REPO_URL}>Source on GitHub</a>
+            <GithubLink label="GitHub" className="gh-text" />
           </nav>
         </div>
         <div className="foot-bot">

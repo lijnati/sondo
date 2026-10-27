@@ -28,13 +28,13 @@
   align-items: center;
 }
 
-.marketing .app-nav nav a:not(.btn) {
+.marketing .app-nav nav a:not(.btn, .gh-link) {
   padding: 8px 10px;
   color: var(--ink-soft);
   font-size: 14px;
 }
 
-.marketing .app-nav nav a:not(.btn):hover {
+.marketing .app-nav nav a:not(.btn, .gh-link):hover {
   color: var(--ink);
 }
 
@@ -843,7 +843,7 @@
     margin-left: 0;
   }
 
-  .marketing .app-nav nav a:not(.btn) {
+  .marketing .app-nav nav a:not(.btn, .gh-link) {
     display: none;
   }
 
