@@ -25,4 +25,4 @@ export async function proxy(req: NextRequest) {
   }
 }
 
-export const config = { matcher: "/r/:id" };
+export const config = { matcher: ["/r/:id", "/r/:id/replay"] };

@@ -59,6 +59,14 @@ All calls go to `https://hackathon.api.qloo.com` (GET only), through a typed, al
 
 Capabilities were verified live; see [QLOO_RESEARCH.md](QLOO_RESEARCH.md) and the sanitized [`scripts/output/probe-summary.json`](scripts/output/probe-summary.json).
 
+## What a judge can try
+
+- **Featured reports** load instantly from the database, with every claim's `E#` chip opening the Qloo result behind it.
+- **Watch the research**: each report replays its stored run in about 20 seconds (`/r/{id}/replay`). It's labelled as a replay and starts no new research.
+- **Without Qloo, by contrast**: the same brief given to a plain language model with no data. Code matches its picks against the report's Qloo ledger and shows which ones Qloo surfaced for this audience, and which partners only Sondo found (`pnpm contrast`).
+- **New brief**: a live run takes about two minutes and streams real Qloo queries.
+- **Share**: every report link unfurls with its own preview image (brand, market, concepts, ledger size).
+
 ## Run it locally
 
 Requirements: Node ≥ 22 (≥ 23.6 for `pnpm spike`) and pnpm.
@@ -92,6 +100,7 @@ See [.env.example](.env.example) for the full list.
 | `pnpm eval` | Runs the 5 fixed briefs live and writes metrics only to `scripts/output/eval-summary.json` |
 | `pnpm agent <brief>` | Runs the agent from the CLI on `scripts/briefs/*.json` |
 | `pnpm featured <brief>[:rank]` | Runs briefs live and features them only if stored `completed` |
+| `pnpm contrast <runId> … \| --featured` | Writes the "Without Qloo" panel for stored reports: one plain-model call per report, no Qloo calls, matched to the ledger in code |
 | `pnpm probe` · `pnpm model:smoke` | Live Qloo capability probe and gateway model check |
 
 ### Deploy

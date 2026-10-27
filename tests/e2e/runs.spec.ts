@@ -85,6 +85,30 @@ test("featured reports open from the landing page and render validated content",
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+
+  // "Without Qloo", when this report has a stored contrast: both lists, and an honest footnote.
+  const contrast = page.locator("#contrast");
+  if (await contrast.count()) {
+    await expect(contrast.locator(".contrast-plain li").first()).toBeVisible();
+    await expect(contrast).toContainText("from this brief alone");
+  }
+});
+
+test("a featured report's research replays from stored events, labelled as a replay", async ({ page }) => {
+  test.setTimeout(120_000);
+  // Reduced motion shows the whole replay at once, so the test doesn't wait for the clock.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const cards = page.locator("#featured a.featured-card");
+  if ((await cards.count()) === 0) test.skip(true, "No featured reports in this database");
+  const href = await cards.first().getAttribute("href");
+  const res = await page.goto(`${href}/replay`, { timeout: 90_000 });
+  expect(res?.status()).toBe(200);
+  await expect(page.getByText(/Replay of a stored run/)).toBeVisible();
+  await expect(page.locator(".live-sub")).toContainText("Replay finished.");
+  await expect(page.getByRole("link", { name: "Back to the report" })).toHaveAttribute("href", href!);
+  await expect(page.getByRole("button", { name: "Cancel run" })).toHaveCount(0);
+  expect((await page.request.get("/r/zzzzzzzzzzzz/replay")).status()).toBe(404);
 });
 
 // Spends real Qloo and model quota. Opt in with E2E_LIVE=1.

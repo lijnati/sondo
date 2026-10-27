@@ -132,3 +132,16 @@ export function summarizeRun(events: readonly SequencedEvent[]): RunSummary {
   out.evidence.total = out.evidence.byCategory.reduce((n, c) => n + c.count, 0);
   return out;
 }
+
+/** A replay plays a stored run back in about this long, whatever the original took. */
+export const REPLAY_MS = 18_000;
+
+/**
+ * Delay before each stored event in a replay, proportional to the work it reports (Qloo and
+ * model call times; Qloo runs about three calls at once), compressed to `total` overall.
+ */
+export function replayDelays(events: readonly SequencedEvent[], total = REPLAY_MS): number[] {
+  const weight = events.map(({ event: e }) => 60 + (e.t === "qloo" ? e.ms / 3 : e.t === "model" ? e.ms : 0));
+  const sum = weight.reduce((a, b) => a + b, 0) || 1;
+  return weight.map((w) => Math.max(30, Math.round((w / sum) * total)));
+}

@@ -7,7 +7,7 @@ import { categoryLabel } from "@/lib/brief/labels";
 import { SequencedEventSchema, type SequencedEvent, type Stage, type StoredRunStatus } from "@/lib/runs/events";
 import { STAGE_LABEL } from "@/lib/runs/labels";
 import { createLineDecoder } from "@/lib/runs/ndjson";
-import { summarizeRun, type RunSummary, type StageView } from "@/lib/runs/progress";
+import { replayDelays, summarizeRun, type RunSummary, type StageView } from "@/lib/runs/progress";
 
 const STAGE_WAITING: Record<Stage, string> = {
   planning: "Maps the brief onto what Qloo can model.",
@@ -35,7 +35,6 @@ const KIND_LABEL: Record<RunSummary["recentQloo"][number]["kind"], string> = {
 };
 
 const POLL_MS = 2_000;
-
 function seconds(ms: number) {
   return `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)} s`;
 }
@@ -52,6 +51,7 @@ export function RunLive({
   initialEvents = [],
   startedAt,
   titleAs: Title = "h1",
+  replay,
 }: {
   runId: string;
   brandName: string;
@@ -60,8 +60,11 @@ export function RunLive({
   startedAt?: string;
   /** h2 when the view is embedded under the brief page's own h1. */
   titleAs?: "h1" | "h2";
+  /** Play these stored events back (sped up) instead of following a live run. */
+  replay?: SequencedEvent[];
 }) {
-  const [events, setEvents] = useState<SequencedEvent[]>(initialEvents);
+  const [events, setEvents] = useState<SequencedEvent[]>(replay ? [] : initialEvents);
+  const [round, setRound] = useState(0);
   const [connection, setConnection] = useState<"stream" | "poll" | "retrying">(reader ? "stream" : "poll");
   const [cancel, setCancel] = useState<"idle" | "sending" | "sent" | "error">("idle");
   // The clock starts after mount: server and browser times differ, and a time read
@@ -73,9 +76,32 @@ export function RunLive({
 
   const summary = useMemo(() => summarizeRun(events), [events]);
   const finished = summary.finished;
+  const originalMs = useMemo(() => (replay ? summarizeRun(replay).stages.reduce((n, s) => n + s.ms, 0) : 0), [replay]);
+
+  // Replay: feed the stored events back on a compressed clock. Reduced motion shows them at once.
+  useEffect(() => {
+    if (!replay) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const delays = replayDelays(replay);
+    let i = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const step = () => {
+      const next = replay[i];
+      if (!next) return;
+      setEvents((prev) => [...prev, next]);
+      i++;
+      if (i < replay.length) timer = setTimeout(step, delays[i]);
+    };
+    // Start (or restart) from an empty view; every state change happens in a timer callback.
+    timer = setTimeout(() => {
+      setEvents(reduced ? replay : []);
+      if (!reduced) timer = setTimeout(step, 400);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [replay, round]);
 
   useEffect(() => {
-    if (started.current) return;
+    if (started.current || replay) return;
     started.current = true;
     let stopped = false;
     const add = (incoming: SequencedEvent[]) => {
@@ -151,6 +177,7 @@ export function RunLive({
 
   // Elapsed clock while running (real time since the run started).
   useEffect(() => {
+    if (replay) return;
     begun.current ??= Date.now();
     const tick = () => setNow(Date.now());
     const first = setTimeout(tick, 0);
@@ -159,17 +186,17 @@ export function RunLive({
       clearTimeout(first);
       if (every) clearInterval(every);
     };
-  }, [finished]);
+  }, [finished, replay]);
 
   // Hand over to the server-rendered report once the run is stored.
   useEffect(() => {
-    if (!finished) return;
+    if (!finished || replay) return;
     const t = setTimeout(() => window.location.replace(`/r/${runId}`), 1400);
     return () => clearTimeout(t);
-  }, [finished, runId]);
+  }, [finished, runId, replay]);
 
   const active = summary.stages.find((s) => s.status === "active");
-  const announcement = finished ? `Run ${STATUS_TEXT[finished].toLowerCase()}. Opening the report.` : active ? `${STAGE_LABEL[active.stage]} in progress.` : "Starting research.";
+  const announcement = finished ? (replay ? "Replay finished." : `Run ${STATUS_TEXT[finished].toLowerCase()}. Opening the report.`) : active ? `${STAGE_LABEL[active.stage]} in progress.` : "Starting research.";
 
   async function requestCancel() {
     setCancel("sending");
@@ -189,12 +216,30 @@ export function RunLive({
     <section className="live" aria-labelledby="live-title">
       <header className="live-head">
         <div>
-          <p className="eyebrow">Live research · {runId}</p>
+          <p className="eyebrow">{replay ? `Replay of a stored run · ${runId}` : `Live research · ${runId}`}</p>
           <Title id="live-title" className="live-title">
-            Researching <em>{brandName}</em>
+            {replay ? "How Sondo researched" : "Researching"} <em>{brandName}</em>
           </Title>
           <p className="live-sub">
-            {finished ? (
+            {replay ? (
+              finished ? (
+                <>
+                  Replay finished.{" "}
+                  <Link href={`/r/${runId}`} className="text-link">
+                    Back to the report
+                  </Link>{" "}
+                  ·{" "}
+                  <button type="button" className="text-link link-button" onClick={() => setRound((n) => n + 1)}>
+                    Replay again
+                  </button>
+                </>
+              ) : (
+                <>
+                  A sped-up replay of the events this run stored as it happened. No new research is running. The original stages took{" "}
+                  <span className="tabular">{seconds(originalMs)}</span>.
+                </>
+              )
+            ) : finished ? (
               <>
                 Finished{elapsed !== null ? <> in <span className="tabular">{seconds(elapsed)}</span></> : null}. Opening the report… <Link href={`/r/${runId}`} className="text-link">Open it now</Link>
               </>
@@ -210,10 +255,10 @@ export function RunLive({
             )}
           </p>
         </div>
-        <span className={`status status-${finished ?? "running"}`}>{STATUS_TEXT[finished ?? "running"]}</span>
+        <span className={`status status-${finished ?? "running"}`}>{replay && !finished ? "Replaying" : STATUS_TEXT[finished ?? "running"]}</span>
       </header>
 
-      {connection === "retrying" ? (
+      {connection === "retrying" && !replay ? (
         <div className="notice warn" role="status" style={{ marginBottom: 16 }}>
           <p>The connection dropped. Reconnecting… The run continues on the server either way.</p>
         </div>
@@ -232,7 +277,7 @@ export function RunLive({
             {announcement}
           </div>
 
-          {!finished ? (
+          {!finished && !replay ? (
             <div className="live-cancel">
               <button type="button" className="btn btn-sm btn-outline" onClick={requestCancel} disabled={cancel === "sending" || cancel === "sent"}>
                 {cancel === "sent" ? "Stopping…" : "Cancel run"}

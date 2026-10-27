@@ -309,6 +309,14 @@
   transition: text-decoration-color 0.2s;
 }
 
+.marketing .link-button {
+  padding: 0;
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
 .marketing .text-link:hover {
   text-decoration-color: currentColor;
 }

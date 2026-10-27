@@ -18,8 +18,10 @@ import {
 import type { StoredRunStatus } from "@/lib/runs/events";
 import { publicText } from "@/lib/runs/redact";
 
+import type { StoredContrast } from "@/lib/contrast/contrast";
 import { DistinctChart, LiftChart } from "./charts";
 import { ConceptTabs } from "./concept-tabs";
+import { ContrastSection } from "./contrast";
 import { EvChip, EvidenceProvider, type EvidenceView } from "./evidence";
 import { Ledger } from "./ledger";
 import { ShareButton } from "./share-button";
@@ -223,6 +225,7 @@ function MissingConcept({ angle }: { angle: Angle }) {
 
 const SECTIONS = [
   ["overview", "Overview"],
+  ["contrast", "Without Qloo"],
   ["concepts", "Concepts"],
   ["signals", "Signals"],
   ["findings", "Findings"],
@@ -236,8 +239,10 @@ export function ReportView({
   failureCode,
   createdAt,
   featured,
+  contrast = null,
 }: {
   report: AgentRunResult;
+  contrast?: StoredContrast | null;
   status: StoredRunStatus;
   failureCode: string | null;
   createdAt: string;
@@ -279,6 +284,9 @@ export function ReportView({
             </p>
           </div>
           <div className="report-actions">
+            <Link href={`/r/${r.runId}/replay`} className="btn btn-sm btn-butter">
+              Watch the research <span className="i" aria-hidden="true">▶</span>
+            </Link>
             <ShareButton path={`/r/${r.runId}`} />
             <Link href="/new" className="btn btn-sm btn-outline">
               New brief
@@ -287,7 +295,7 @@ export function ReportView({
         </div>
 
         <nav className="report-nav" aria-label="Report sections">
-          {SECTIONS.filter(([id]) => id !== "signals" || hasSignals).map(([id, label]) => (
+          {SECTIONS.filter(([id]) => (id !== "signals" || hasSignals) && (id !== "contrast" || contrast)).map(([id, label]) => (
             <a key={id} href={`#${id}`}>
               {label}
             </a>
@@ -429,6 +437,8 @@ export function ReportView({
             </div>
           ) : null}
         </section>
+
+        {contrast ? <ContrastSection contrast={contrast} /> : null}
 
         {/* ── Concepts ── */}
         <section id="concepts" className="r-section" aria-labelledby="concepts-title">

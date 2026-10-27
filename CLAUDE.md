@@ -54,5 +54,6 @@ Qloo ≤ 24 calls · LLM ≤ 4 calls · ≤ 2 adaptive rounds · Qloo timeout 12
 - `pnpm eval [--only a,b] [--cache] [--out]`: the Phase 2 evaluation. It runs the 5 fixed briefs live (no Qloo cache by default) and writes metrics only to `scripts/output/eval-summary.json` (safe to commit). The exit code is non-zero unless every brief passes. `--out` saves full results to the gitignored `.qloo-cache/runs/`.
 - `pnpm db:migrate`: apply pending migrations to `DATABASE_URL` (prints file names only).
 - `pnpm featured <brief>[:rank] …`: run briefs live through `executeRun()`, persist them, and feature each one only if it is stored `completed`. Spends real quota (≤ 24 Qloo calls each; the Postgres cache makes re-runs cheap).
+- `pnpm contrast <runId> … | --featured`: the "Without Qloo" panel. One model call per report from the brief alone (no Qloo), matched to the ledger by code, stored in `report_contrasts` (migration 0002). The model writes names only.
 - `pnpm model:smoke [provider/model]`: check that a gateway model handles structured output and tool calls. The default free model has no native JSON-schema output, so `generateStructured` uses a forced tool call (`SONDO_STRUCTURED_MODE=tool|output` overrides).
 - TypeScript is pinned to `~6.0` because typescript-eslint doesn't support 7.x yet.

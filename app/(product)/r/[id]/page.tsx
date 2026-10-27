@@ -8,6 +8,7 @@ import { ReportView } from "@/components/report/report-view";
 import { RunLive } from "@/components/run/run-live";
 import { PageState } from "@/components/shared/states";
 import { getDb } from "@/lib/db/client";
+import { getContrast } from "@/lib/db/contrasts";
 import { getRun, listEvents } from "@/lib/db/runs";
 import { statusInfo } from "@/lib/report/view";
 import { isRunId } from "@/lib/runs/ids";
@@ -102,10 +103,12 @@ export default async function ReportPage({ params }: PageProps<"/r/[id]">) {
     );
   }
 
+  // Optional extra: a missing table or row must never break the report.
+  const contrast = await getContrast(getDb(), row.id).catch(() => null);
   return (
     <>
       <AppNav />
-      <ReportView report={row.report} status={row.status} failureCode={row.failureCode} createdAt={row.createdAt} featured={row.featured} />
+      <ReportView report={row.report} status={row.status} failureCode={row.failureCode} createdAt={row.createdAt} featured={row.featured} contrast={contrast} />
     </>
   );
 }

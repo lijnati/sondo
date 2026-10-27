@@ -4,7 +4,11 @@ import type { Metadata, Viewport } from "next";
 
 import "./globals.css";
 
+// Absolute URLs for link-preview images: the production domain on Vercel, else localhost.
+const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+
 export const metadata: Metadata = {
+  metadataBase: new URL(productionHost ? `https://${productionHost}` : "http://localhost:3000"),
   title: { default: "Sondo — cultural intelligence strategist", template: "%s · Sondo" },
   description:
     "Sondo turns a brand brief into evidence-backed campaign strategies, grounded in Qloo's cultural graph. Every cultural claim cites a Qloo result.",

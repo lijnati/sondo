@@ -22,7 +22,8 @@
     "model:smoke": "tsx --env-file-if-exists=.env.local scripts/model-smoke.ts",
     "eval": "tsx --env-file-if-exists=.env.local scripts/eval.ts",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/db-migrate.ts",
-    "featured": "tsx --env-file-if-exists=.env.local scripts/featured.ts"
+    "featured": "tsx --env-file-if-exists=.env.local scripts/featured.ts",
+    "contrast": "tsx --env-file-if-exists=.env.local scripts/contrast.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

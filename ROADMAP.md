@@ -248,6 +248,12 @@ Totals: 4/4 completed, 1/1 degraded with a disclosed reason, 0 invalid citations
 4. During client navigation from `/new` to a live run, the tab title stays "New brief · Sondo" until reload.
 5. On mobile, concept tab names truncate inside a scrolling row (from Phase 4).
 
+### Phase 5 additions (2026-10-27, founder-approved over the release freeze)
+- **Watch the research** (`/r/[id]/replay`): replays a finished run's stored public events in about 18 s. Delays are proportional to each event's real Qloo or model time (`replayDelays`, unit-tested). It's labelled "Replay of a stored run" and "No new research is running", has no cancel button and no redirect, shows everything at once under reduced motion, and 404s unknown ids through `proxy.ts`.
+- **Without Qloo, by contrast** (`pnpm contrast`, `report_contrasts` via additive migration 0002, applied): the same model is given the brief alone and returns names and categories only. `buildContrast` matches them to the ledger by normalised name (entities only) and separates anchor echoes from suggestions; "found only by Sondo" leaves out the brief's anchors and market. Live, for the 3 featured reports: **1 of 32** plain suggestions appeared among the Qloo results collected for that audience, and Sondo's concepts cite **23** partners the plain model never named. Unit and PGlite tests are included.
+- **Link previews**: `/r/[id]/opengraph-image` shows the brand, market, concept names and ledger size, with the stored status printed as is, plus a generic card for unknown ids. `metadataBase` comes from `VERCEL_PROJECT_PRODUCTION_URL`. The Geist TTFs (OFL) live in `assets/fonts/`.
+- Gates: typecheck, lint, 272 unit tests, build, and e2e against the local production build (all of `runs.spec`, including new replay and contrast checks, green).
+
 ## Phase 6: Documentation and submission (Oct 29)
 **Deliverables:** README (problem, Qloo-powered explanation, architecture diagram, endpoints used, run instructions, env, limitations, mapping to the criteria), Devpost description, screenshots, optional 2-min video, testing instructions ("no login"), then **submit by 6:00 pm ET**. Run the HACKATHON.md §8 checklist.
 **Done when:** the Devpost confirmation is captured. Oct 30 is reserved for emergencies only.

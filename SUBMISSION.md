@@ -69,6 +69,9 @@ Next.js 16 (App Router, Node runtime) on Vercel, Neon Postgres, Vercel AI Gatewa
 - Three evidence tiers, an evidence drawer, lift and distinctiveness SVG charts with table fallbacks, a filterable evidence ledger, and the Qloo trace.
 - Honest statuses: partial and interrupted runs are labelled as such, with the reason.
 - Three featured reports from real completed runs, loaded from the database with zero Qloo calls.
+- **Watch the research:** any finished report replays its stored run events in about 20 seconds: the stages, the real Qloo queries, the adaptive decisions and the evidence filling in. It's labelled as a replay of a stored run throughout and starts no new research.
+- **Without Qloo, by contrast:** the same brief given to the same model with no data access. Code matches its picks against the report's Qloo ledger. Across the three featured reports (Oct 27), 1 of 32 plain-model suggestions appeared among the Qloo results Sondo collected for that audience; 4 further picks only repeated the brief's own anchors and are shown separately. Sondo's concepts cite 23 partners the plain model never named. The panel lists the partners only Sondo found, each linked to its Qloo result.
+- **Link previews:** each report URL unfurls with its own image (brand, market, concept names, ledger size).
 
 ## What makes it innovative
 
@@ -98,6 +101,8 @@ Next.js 16 (App Router, Node runtime) on Vercel, Neon Postgres, Vercel AI Gatewa
    - Check the cover line "Grounded in N Qloo results across M categories".
    - Switch between the three concept tabs.
    - Click any `E#` chip to see the Qloo result behind a claim, and note the three evidence tiers.
+   - Read **Without Qloo, by contrast**: what a plain model suggests from the same brief, next to the partners only Sondo found with Qloo.
+   - Press **Watch the research** to see the agent's run replayed in about 20 seconds.
    - Scroll to the lift and distinctiveness charts, the evidence ledger and "Run details and Qloo trace".
 3. Click **New brief**, choose an example (or write your own) and submit.
 4. Watch the live research view: real Qloo queries, the budget, evidence per category and adaptive decisions. A run takes about 1.5–3 minutes. You can leave and come back; it keeps running.

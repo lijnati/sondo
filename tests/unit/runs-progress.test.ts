@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { PublicRunEvent } from "@/lib/runs/events";
-import { summarizeRun } from "@/lib/runs/progress";
+import { replayDelays, summarizeRun } from "@/lib/runs/progress";
 
 const seq = (events: PublicRunEvent[]) => events.map((event, i) => ({ seq: i, event }));
 
@@ -99,5 +99,23 @@ describe("summarizeRun", () => {
     expect(s.recentQloo[0]).toMatchObject({ results: 13, ms: 113, cached: false, category: "urn:entity:artist" });
     expect(s.recentQloo.at(-1)?.results).toBe(2);
     expect(s.qloo).toMatchObject({ calls: 14, failed: 1, cached: 7 });
+  });
+});
+
+describe("replayDelays", () => {
+  const ev = (event: PublicRunEvent, seq: number) => ({ seq, event });
+  const events = [
+    ev({ t: "run.started", runId: "Fixture00Run", budget: { qloo: 24, llm: 4 } }, 0),
+    ev({ t: "qloo", kind: "insights", category: "artist", ok: true, cached: false, results: 10, ms: 900 }, 1),
+    ev({ t: "model", stage: "strategize", ok: true, ms: 30_000 }, 2),
+    ev({ t: "run.finished", runId: "Fixture00Run", status: "completed" }, 3),
+  ];
+
+  it("compresses the stored run to about the target length, longest where the work was", () => {
+    const d = replayDelays(events, 10_000);
+    expect(d).toHaveLength(4);
+    expect(Math.abs(d.reduce((a, b) => a + b, 0) - 10_000)).toBeLessThan(50);
+    expect(d[2]).toBeGreaterThan(d[1]!);
+    expect(Math.min(...d)).toBeGreaterThanOrEqual(30);
   });
 });
