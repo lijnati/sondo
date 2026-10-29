@@ -1,6 +1,6 @@
 # ROADMAP.md — Phase plan to submission
 
-Last updated **Tue 2026-10-27**. Hard deadline: **Fri Oct 30, 11:45 pm ET**. Internal submission target: **Thu Oct 29, 6:00 pm ET**. Oct 30 is a buffer with no feature work.
+Last updated **Thu 2026-10-29**. Hard deadline: **Fri Oct 30, 11:45 pm ET**. Internal submission target: **Thu Oct 29, 6:00 pm ET**. Oct 30 is a buffer with no feature work.
 Order of investment: **Qloo integration → agent → app plumbing → design → hardening → submission.** A deployed URL exists from Phase 1 onward.
 
 | Phase | Dates | Theme | Exit gate |
@@ -12,7 +12,7 @@ Order of investment: **Qloo integration → agent → app plumbing → design �
 | 3 | Oct 19 | App integration | ✅ Built and verified locally Oct 19 against live Qloo, the live model and Neon: brief → live stream → persisted report permalink, 3 verified featured reports. Production deploy awaits approval (see Phase 3 results). |
 | 4 | Oct 20 | Product design and UX | ✅ Built and verified Oct 20 (see Phase 4 results). Light-only by founder decision. Phase 5 awaits approval. |
 | 5 | Oct 27–28 | Hardening and verification | ✅ Oct 27: deployed at https://sondo.xylolabs.space (fra1), repo public, live eval 4/4 + 1/1 after fixes, a live production run completed (see Phase 5 results). Devpost submission awaits the founder. |
-| 6 | Oct 29 | Documentation and submission | Devpost submitted, with the checklist in HACKATHON.md §8 complete |
+| 6 | Oct 29 | Final release and submission | ✅ Release verified Oct 29: a fresh production run completed, production e2e 31/31, live eval 4/4 completed with 0 invalid citations. Devpost copy, screenshots and pitch kit are ready (see Phase 6 results). **Submitting on Devpost is the founder's action and is not yet confirmed.** |
 
 ---
 
@@ -211,7 +211,7 @@ Totals: 0 invalid citations, 0 mismatched citations left in output, 0 evidence c
 1. The strategy retry with a compact digest now also covers provider errors and timeouts. It runs only if a full model call plus 10 s still fits before the hard deadline.
 2. After a repair, the original and repaired drafts both go through `finalizeStrategy`, and the better-grounded one is kept (ties go to the repair).
 
-**Live eval, Oct 27 post-fix** (a new full run; `scripts/output/eval-summary.json`; live Qloo, no cache; `nvidia/nemotron-3.5-lightning-free`):
+**Live eval, Oct 27 post-fix** (a new full run; `scripts/output/eval-summary-2026-10-27.json`; live Qloo, no cache; `nvidia/nemotron-3.5-lightning-free`):
 
 | Brief | Status | Concepts g/p/i | Ev / hyp claims | Citations (invalid) | Dropped mismatches | Max overlap | Qloo | Model (failed) | Tokens in/out | Adaptive rounds | Evidence | Time |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -254,9 +254,49 @@ Totals: 4/4 completed, 1/1 degraded with a disclosed reason, 0 invalid citations
 - **Link previews**: `/r/[id]/opengraph-image` shows the brand, market, concept names and ledger size, with the stored status printed as is, plus a generic card for unknown ids. `metadataBase` comes from `VERCEL_PROJECT_PRODUCTION_URL`. The Geist TTFs (OFL) live in `assets/fonts/`.
 - Gates: typecheck, lint, 272 unit tests, build, and e2e against the local production build (all of `runs.spec`, including new replay and contrast checks, green).
 
-## Phase 6: Documentation and submission (Oct 29)
+## Phase 6: Final release and submission (Oct 29)
 **Deliverables:** README (problem, Qloo-powered explanation, architecture diagram, endpoints used, run instructions, env, limitations, mapping to the criteria), Devpost description, screenshots, optional 2-min video, testing instructions ("no login"), then **submit by 6:00 pm ET**. Run the HACKATHON.md §8 checklist.
 **Done when:** the Devpost confirmation is captured. Oct 30 is reserved for emergencies only.
+
+### Phase 6 results (2026-10-29)
+*Authorized Oct 29 as the final phase. Release freeze: no feature, design or agent changes. The only changes are docs and a preserved eval summary.*
+
+**Release audit.** Production (`sondo.xylolabs.space`, Vercel project `sondo`, `fra1`) serves deployment `dpl_33KQZKyH1f9ggeSujofJXHiu8Zv4`, built from `18dcb93`, which is `main` and `origin/main`. Vercel reports **0 runtime errors in the last 7 days**. Since the Phase 5 history scan, the new commits contain no secrets, no debug logging and no tracked artifacts. No release-blocking defect was found, so no application code changed.
+
+**Gates (run Oct 29 on this machine)**
+- `pnpm typecheck`: green. `pnpm lint`: green, 0 warnings. The first attempt hung idle for about 20 minutes while three jobs shared the machine; it was killed and rerun alone, and passed in 3 min.
+- `pnpm test`: 21 files, **272 passed**.
+- `pnpm build`: green (Next.js 16.4.2; the route table includes `/r/[id]/opengraph-image-oc6jf` and partial prerendering on `/new`, `/r/[id]` and `/r/[id]/replay`).
+- **e2e against production** (`E2E_BASE_URL=https://sondo.xylolabs.space E2E_LIVE=1`): 27 passed, 4 failed and 1 skipped (the live test runs on desktop only). All 4 failures were `page.goto` load timeouts at the 30 s default on this machine's slow link, which measured about 37 KB/s uncompressed. None was an assertion failure. Rerun serially with a 120 s timeout, those 4 tests passed on both projects (8/8). **Net: 31 of 31 non-skipped tests pass on production.** Local e2e on a local build was not run this phase; the production run covers the same commit.
+
+**Fresh production run.** The live e2e test submitted the *Cold brew · Austin* example through the real UI on production. It was stored as **`completed`** (run `VtYGJ6KS6IIg`, *Oat Hour · Austin*): 82 Qloo results across 5 categories, 32 directly supported claims, and code-written findings. Its permalink returns 200 and renders server-side. The 3 featured runs (`VTuxwl03jMKD`, `DseEb2AHvHWh`, `3KZLO3daGGPB`) are still `completed` and featured, and an older report (`Fla2JFlK1e1C`) still opens. Unknown ids return a real 404. Replay returns 200. The per-report OG image is served at its hashed path (`/r/[id]/opengraph-image-…`, 200, `image/png`); the unhashed path is a 404 by design.
+
+**Live eval, Oct 29** (`pnpm eval`; live Qloo, no cache; `nvidia/nemotron-3.5-lightning-free`; `scripts/output/eval-summary.json`. The Oct 27 post-fix summary is kept as `eval-summary-2026-10-27.json`.)
+
+| Brief | Expect | Status | Concepts g/p/i | Ev / hyp claims | Citations (invalid) | Dropped mismatches | Max overlap | Qloo | Model (failed) | Time |
+|---|---|---|---|---|---|---|---|---|---|---|
+| coldbrew-austin | complete | completed ✅ | 3/0/0 | 14 / 1 | 31 (0) | 2 | 0.14 | 12/24 | 3/4 (1) | 124 s |
+| hotel-lisbon | complete | completed ✅ | 3/0/0 | 9 / 0 | 38 (0) | 0 | 0.29 | 16/24 | 4/4 (0) | 122 s |
+| sneakers-nyc | complete | completed ✅ | 3/0/0 | 15 / 0 | 37 (0) | 0 | 0.00 | 16/24 | 3/4 (0) | 70 s |
+| liquid-death-la | complete | completed ✅ | 3/0/0 | 14 / 0 | 42 (0) | 5 | 0.14 | 14/24 | 4/4 (1) | 133 s |
+| unknown-brand | degrade | **completed ✗ (eval check)** | 3/0/0 | 9 / 0 | 28 (0) | 0 | 0.14 | 9/24 | 3/4 (0) | 107 s |
+
+Totals: **4/4 completed**. The degrade check scored **0/1**. Citations: 176 in total, **0 invalid**, 0 mismatched left in output (7 dropped), 0 evidence claims without a relevant citation. Every budget held, the gateway reported $0, p50 was 122 s and the max 133 s. The command exits non-zero because of the degrade check.
+
+**Why unknown-brand "failed".** This brief (a fictional pickle maker in Pierre, South Dakota, with no anchors and no ages) was expected to come back partial. This time Qloo returned 40 results for the market, and all three concepts cleared the grounding bar with 28 valid, relevant citations. The 3 auto-attached citations are ledger entities the text names explicitly (`fixClaim` in `lib/agent/validate.ts`), so no support was invented. That makes it a stale eval expectation rather than an integrity defect. The expectation was **not** relaxed to make the check pass. The model's repair call failed on 2 of 5 runs (`AI_ToolChoiceViolationError`), and the deterministic fixes plus keep-the-better-draft handled both.
+
+**Judge readiness**
+- Re-read the Devpost overview and rules on Oct 29. **The judging period now ends Nov 5** (it was Nov 16). The top 3 finalists present live on Nov 5. HACKATHON.md is updated. Requirements are unchanged: a live demo, a public repo, a text description, external hosting and a visible license; a video is not required.
+- `SUBMISSION.md` was rewritten to Devpost's fields (Inspiration, What it does, How we built it, How Qloo powers Sondo, Challenges, Accomplishments, What we learned, What's next, Demo instructions), plus a pitch kit: a 30 s pitch, a 90 s demo script, five judge questions and the startup case. Every number in it is sourced in its last section.
+- 12 production screenshots, including a 3:2 cover, were captured with Playwright Chromium, with no console errors. They're kept out of git in `.qa/submission/` because they show Qloo results. The Chrome extension was not connected, so there's no hand-driven browser pass this phase.
+- The landing explains what Sondo is, how it differs from a plain model ("Evidence, not vibes", the lift section, What Sondo is and isn't), and how to try it. "Who it's for" appears only in the FAQ; it was left as is under the release freeze.
+
+**Known issues (unchanged by design under the freeze)**
+1. The free model still causes most risk: a judge's fresh run can come back `partial` (labelled honestly). Its repair call fails on some runs and is handled.
+2. When the model uses an `E#` as a noun ("the sound of E16"), stripping inline ids can leave a dangling phrase. This is visible once in the featured Stride Loop report ("…ties the sneaker to the sound of"). It's cosmetic: no unsupported claim is shown.
+3. The unknown-brand eval expectation is stale (see above).
+4. Reports are about 400 KB of HTML (about 41 KB with brotli). On a very slow link, a cold page load can exceed 30 s.
+5. Carried over from Phase 5: concept overlap is not enforced after repair, the tab title is stale after client navigation to a live run, and concept tab names truncate on mobile.
 
 ---
 

@@ -114,6 +114,15 @@ It's a standard Next.js 16 app on Vercel (Node runtime). Set the environment var
 - Public run events never contain Qloo params, IDs, error strings or model-written reasoning (`toPublicEvent()`).
 - Brief text and Qloo text are passed to the model as data, with injected instructions ignored, and the model's output is validated by code either way.
 
+## Verification (Oct 29, 2026)
+
+- `pnpm typecheck`, `pnpm lint` and `pnpm test` (272 unit tests, including in-process Postgres via PGlite) pass.
+- **Playwright against production:** all 31 non-skipped tests pass at 1280 and 375 px, including a live brief → report run through the real UI. That run was stored `completed`: 82 Qloo results across 5 categories.
+- **Live eval** (`pnpm eval`: 5 fixed briefs, live Qloo, no cache): the 4 briefs expected to complete all completed with three grounded concepts. There were 176 citations, none of them invalid, and every budget held.
+  - The fifth brief, a fictional brand in a low-density market, was expected to come back partial. This time it found enough Qloo evidence to ground all three concepts, so the eval's "degrade" check reports a miss.
+
+Details and raw metrics: [ROADMAP.md, Phase 6](ROADMAP.md#phase-6-results-2026-10-29) and [`scripts/output/eval-summary.json`](scripts/output/eval-summary.json).
+
 ## Known limitations
 
 - The default free model is flaky. A fair share of live runs end as an honest `partial` (fewer than three fully grounded concepts) rather than `completed`. A stronger `SONDO_MODEL` is the main quality lever.

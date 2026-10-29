@@ -1,133 +1,210 @@
 # Sondo: Devpost submission
 
-**Project name:** Sondo
-
-**Tagline:** Stop guessing what your audience loves. An AI strategist that turns a brand brief into campaign concepts where every cultural claim traces to a Qloo result.
-
-**Try it:** https://sondo.xylolabs.space (no login)
-**Code:** https://github.com/lijnati/sondo (MIT)
+Copy-ready text for each Devpost field, then the pitch kit (demo script, elevator pitch, judge Q&A). Every number below comes from a stored run, a live eval or a test run; the sources are listed in [Where the numbers come from](#where-the-numbers-come-from).
 
 ---
 
-## Problem
+## Devpost fields
 
-Brand marketers and agency strategists choose cultural partners (artists, shows, podcasts, venues, co-brands) for launches and campaigns. Without an insights team, they do it by gut feel, trend-chasing or slow, expensive panels. LLM copilots haven't fixed this. They produce fluent, confident lists drawn from training-data stereotypes, with no evidence and no sense of how *this* audience differs from everyone else. Teams end up on the same mainstream picks as their competitors, with nothing to defend the choice in a client meeting.
+**Project name:** Sondo
 
-## Solution
+**Tagline (≤ 200 chars):** Cultural strategy with receipts. Sondo turns a brand brief into three campaign concepts, and every cultural claim links to the Qloo result behind it.
 
-Sondo is an autonomous research agent. You give it a brief: brand, audience, market, objective and optionally a few things the audience is known to love. It researches Qloo's taste graph live and returns a report with three differentiated campaign concepts (mainstream anchor, distinctive niche, cross-category bridge). Each claim is marked by its evidence tier:
+**Try it out:** https://sondo.xylolabs.space (no login, no payment, nothing to configure)
+**Code:** https://github.com/lijnati/sondo (MIT)
+
+**Built with:** `next.js` `react` `typescript` `qloo` `vercel` `vercel-ai-gateway` `ai-sdk` `neon` `postgresql` `zod` `vitest` `playwright`
+
+---
+
+### Inspiration
+
+Every brand launch needs cultural partners: the artist, the show, the podcast, the venue or the co-brand that makes a campaign feel native to its audience. Big brands pay insights teams and research panels for that answer. Everyone else guesses.
+
+AI has made that guessing faster without making it better. Ask a general-purpose model which podcasts a 25-to-34-year-old in Austin loves and you get a fluent, confident list drawn from training-data stereotypes. It's the same list your competitors get, there's no evidence behind it, and nothing tells you how *this* audience differs from everyone else in the city. You can't defend it in a client meeting.
+
+We wanted the opposite: an agent that does the research, shows its sources, and says plainly when it can't support a claim.
+
+### What it does
+
+You give Sondo a brief: a brand, an audience, a market, an objective and, optionally, a few things that audience already loves. Sondo's agent then researches Qloo's taste graph live, and you can watch it work: the stages, the real Qloo queries, the budget and the evidence coming in.
+
+A few minutes later you have a report with **three different campaign concepts**: a mainstream anchor, a distinctive niche and a cross-category bridge. Each claim is marked with its evidence tier:
 
 - **Directly supported:** the sentence names the Qloo result it cites.
-- **Contextual support:** the citation is related (same category or taste theme).
-- **Hypothesis / creative idea:** strategic judgement, visibly different, never dressed up as a finding.
+- **Contextual support:** the cited result is related (same category or taste theme).
+- **Hypothesis or creative idea:** strategic judgement, styled differently, never dressed up as a finding.
 
-Every `E#` chip opens the underlying Qloo result: category, rank within its query, popularity, tags, and which query produced it. The report also shows what Sondo could and couldn't model from the brief, code-written key findings, lift and distinctiveness charts, the full evidence ledger, and the key-free Qloo tool trace.
+Click any `E#` chip and the Qloo result behind the claim opens: its category, its rank within its query, popularity, tags and the query that produced it. The report also shows:
 
-## How Qloo is used
+- what Sondo could and couldn't model from the brief;
+- key findings written by code;
+- audience-lift and distinctiveness charts;
+- the full evidence ledger and the Qloo trace (with no keys);
+- a "how to validate" test plan for every concept;
+- a **Without Qloo** panel: the same brief given to the same model with no data access, matched against Qloo's results.
 
-All research goes through a typed, allowlisted, budgeted client for `hackathon.api.qloo.com`:
+Reports are permanent, shareable links that unfurl with their own preview image. Any finished report can **replay** its research in about 20 seconds.
 
-- **`/search`** resolves the brand and anchors to Qloo entities. Only trusted matches seed research; a fictional brand is reported as "not in Qloo" rather than guessed.
-- **`/v2/insights` across entity types** (artists, TV, film, podcasts, books, brands, places). Each category is queried **twice**: once with the audience's signals (age buckets, gender if stated, anchors, market) and once as a **market baseline**. Comparing the ranks gives **audience lift**: what over-indexes for this audience rather than for everyone in the city.
-- **`/v2/insights` with `filter.type=urn:tag`** returns the taste themes behind the signal set.
-- **`/v2/insights` with `filter.type=urn:demographics`** gives the age and gender affinity of the anchors.
-- **Popularity × in-query rank** gives a **distinctiveness** map: strong-fit entities that aren't mainstream.
-- **Cross-domain bridges:** the agent can take a strong result in one category (say, a brand) and use it as a seed for another (podcasts), following Qloo's cross-category graph.
+### How we built it
+
+- **App:** Next.js 16 (App Router, Node runtime), React 19 and TypeScript in strict mode, deployed on Vercel in `fra1` next to the database.
+- **Agent:** AI SDK 7 through the Vercel AI Gateway. The production model is `nvidia/nemotron-3.5-lightning-free`, a free model; that was a deliberate constraint, and the reason the validation layer had to be strong.
+- **Data:** Neon Postgres for runs, the event log, reports and a private Qloo response cache. Zod validates every boundary: briefs, Qloo responses, model output and database rows.
+- **Agent design:** a bounded state machine in `lib/agent/`. Code owns control flow, entity ids, every number, budgets and run status; the model plans, picks research moves and writes copy. Steps:
+  1. **Plan.** The model turns the brief into categories and questions, and code clamps the plan to the brief: ages, market and anchors stay authoritative, and anything Qloo can't model (income, values) is listed as *not modeled*.
+  2. **Research (code).** Resolve the brand and anchors, then run paired target and baseline queries per category, plus taste themes and anchor demographics.
+  3. **Adapt (up to 2 rounds).** The model chooses follow-ups from a fixed tool menu: explore a category, add a niche lens, bridge from an `E#`, fetch taste themes, or stop. Code checks each proposal against the ledger and the budget before anything runs.
+  4. **Critique (code).** Writes findings (`F#`) on lift, distinctiveness, cross-category intersections, conflicts and gaps.
+  5. **Strategize (model).** Three concepts that may cite only ledger ids.
+  6. **Validate (code), with one repair call.** Every citation must exist and must relate to the sentence that cites it. Evidence claims with no relevant citation become hypotheses. Invented numbers and performance claims are removed. Concepts must differ.
+  7. **Integrity gate.** A run is stored `completed` only if all three concepts are grounded (at least 3 relevant citations across at least 2 categories) and the stored report re-validates. Otherwise it's stored as `partial`, `failed`, `cancelled` or `interrupted`, with the reason shown.
+- **Runs outlive the request.** A run executes under Next.js `after()`, streams public events as NDJSON, writes each event to Postgres, and resumes on reload. Public events never carry Qloo params, ids, error text, token counts or model-written reasoning.
+- **Guardrails per run:** 24 Qloo calls, 4 model calls, 2 adaptive rounds, a 180 s hard limit and Qloo concurrency of 3. Across visitors: a per-IP daily limit (IPs stored only as HMACs), a global daily cap, a concurrency cap, idempotent submits and a kill switch that serves featured reports only.
+
+### How Qloo powers Sondo
+
+Qloo is the only evidence source. If you remove it, the ledger is empty, the validator has nothing to accept, and every claim is downgraded to a hypothesis. Sondo would still write, but it couldn't prove anything.
+
+All calls go through a typed, allowlisted, budgeted client for `hackathon.api.qloo.com`:
+
+- **Entity resolution (`/search`).** Brand and anchor names become Qloo entities. Only trusted matches seed research, and a fictional brand is reported as "not in Qloo" rather than guessed.
+- **Cultural affinities (`/v2/insights` across artists, film, TV, podcasts, books, brands and places).** Each category is queried twice: once with the audience's signals (age buckets, gender if stated, anchors, market) and once as a **market baseline**. Comparing the two ranks gives **audience lift**: what over-indexes for this audience rather than for everyone in the city.
+- **Taste themes (`filter.type=urn:tag`)** behind the signal set, and **demographics (`filter.type=urn:demographics`)** of the anchors.
+- **Distinctiveness.** Qloo popularity crossed with in-query rank finds strong-fit entities that aren't mainstream.
+- **Cross-domain discovery.** The agent can take a strong result in one category (a brand) and use it as the seed for another (podcasts), following Qloo's graph across domains.
+- **Provenance.** Every `E#` is a row parsed from a real Qloo response: query, rank, popularity and tags. The model can reference an id but can never write one, and it never writes a number.
 
 Lift and distinctiveness are labelled as Sondo heuristics. Qloo affinity is never presented as purchase intent, audience share or ROI.
 
-**Why this needs Qloo:** without it, Sondo has no ledger, so there's nothing to cite, no baseline to compare against and no lift. The validator would downgrade every claim to a hypothesis. The product only works because the evidence comes from Qloo.
+**The measured difference.** For the three featured briefs we asked the same model for cultural partners with no data access. Of its 32 suggestions, **1** appeared among the Qloo results collected for that audience. Sondo's concepts cite **23** partners the plain model never named. The report shows both lists, matched by code.
 
-## Technical architecture
+### Challenges we ran into
 
-Next.js 16 (App Router, Node runtime) on Vercel, Neon Postgres, Vercel AI Gateway, and the Qloo hackathon API. The agent is a bounded state machine in `lib/agent/`:
+- **A free model that doesn't always follow the format.** It sometimes answered in prose instead of structured output, or timed out. We forced structured output through a tool call, added a compact-digest retry that runs only when the deadline allows, applied deterministic fixes when repair fails, and kept whichever of draft or repair is better grounded. All of it runs through the same validator.
+- **Real citations on the wrong sentence.** Early runs attached genuine `E#` ids to unrelated claims. Checking that an id exists wasn't enough, so we built a deterministic relevance check (names, tags, category words) and a downgrade-to-hypothesis rule.
+- **Ids and numbers leaking into prose.** The model wrote "(E11)" into sentences, and the no-invented-numbers rule then withheld whole insights. Inline ids are now stripped before validation, with a regression test.
+- **A 200 that ignores you.** Qloo silently ignores parameters a type doesn't support. We verified each type's parameters with a live probe and drop anything off the allowlist in code instead of trusting the status code.
+- **Serverless runs that outlive the request.** Postgres is the only coordination point: conditional status updates, backoff on the final write, and stale rows marked `interrupted` instead of left "running" forever.
 
-1. **Plan (model, then a code clamp):** turns the brief into categories and questions. The brief's ages, market and anchors stay authoritative, and anything Qloo can't model (income, values) is listed as *not modeled*.
-2. **Research (code):** resolves anchors, then runs target and baseline queries per category, taste themes and anchor demographics.
-3. **Adapt (up to 2 rounds):** the model proposes follow-ups from a fixed tool menu (explore a category, a niche lens, bridge from an `E#`, taste themes, stop). Code validates each proposal against the ledger and budget before it runs, and rejects unknown tools or ids.
-4. **Critique (code):** writes findings (`F#`) for lift, distinctiveness, cross-category intersections, conflicts and gaps.
-5. **Strategize (model):** writes three concepts that may cite only `E#` ids from the ledger.
-6. **Validate (code):**
-   - every citation must exist and must relate to the sentence citing it;
-   - evidence claims without a relevant citation become hypotheses;
-   - invented numbers and performance claims are removed;
-   - concepts must differ.
-   One repair call is allowed.
-7. **Integrity gate:** a run is stored `completed` only if all three concepts are grounded (≥ 3 relevant citations across ≥ 2 categories) and the stored report re-validates. Otherwise it's `partial`, `failed`, `cancelled` or `interrupted`, with the reason shown.
+### Accomplishments that we're proud of
 
-**Guardrails per run:** 24 Qloo calls, 4 model calls, 2 adaptive rounds, a 180 s hard limit, Qloo concurrency 3, and an estimated cost cap.
+- **0 invalid citations** in every recorded live eval (Oct 19, both Oct 27 runs and Oct 29). In the Oct 29 eval, against live Qloo with no cache, the 5 fixed briefs produced 176 citations. All were valid, every evidence claim had a relevant citation, and all 5 runs stayed within budget.
+- **Honest status.** A run that can't ground all three concepts is stored and shown as `partial` with the reason, never promoted to `completed`. The integrity gate makes that structural.
+- **The model never writes a number.** Every rank, score and count in the UI is rendered from parsed Qloo responses.
+- **A product, not a notebook:** live research view, permalinks, replay, the evidence drawer, charts with table fallbacks, link previews, and real 404s for unknown reports. Lighthouse accessibility scores 100 on the landing, composer and report pages in production.
+- **Tested like it matters:** 272 unit tests (including in-process Postgres via PGlite) and a Playwright suite at 1280 and 375 px that also runs against production.
 
-**Runs survive the client leaving.** A run executes under `after()`, streams public events as NDJSON, persists every event, and resumes on reload. Public events never include Qloo params, ids, error text or model-written reasoning.
+### What we learned
 
-**Abuse limits:** per-IP daily limit (stored as an HMAC, never the raw IP), a global daily cap, a concurrency cap, idempotent submits, and a kill switch that serves featured reports only.
+- **Grounding is a pipeline property, not a prompt.** Asking the model to "cite sources" produced plausible ids on the wrong sentences. What worked was making ids unforgeable (code assigns them), checking relevance in code, and letting the run fail honestly.
+- **A baseline is what makes cultural data useful.** A single affinity list mostly shows what's popular. The paired audience-vs-market query is what surfaces the non-obvious partner.
+- **Bounded agency beats open-ended agency for trust.** A typed menu of research moves, each validated before it runs, gave us an agent that adapts, stays within budget, and leaves a trace a person can audit.
+- **Say "partial" out loud.** Labelling unsupported concepts made the output more credible, not less.
 
-## Key features (all live)
+### What's next for Sondo
 
-- Brief composer with plain-English validation and three one-click example briefs.
-- A live research view: stage timeline, the real Qloo queries as they run, the budget used, evidence per category, adaptive decisions. No fake progress bars and no model "thoughts".
-- Persistent, shareable report permalinks (`/r/{id}`), rendered server-side. Unknown ids return a real 404.
-- Three evidence tiers, an evidence drawer, lift and distinctiveness SVG charts with table fallbacks, a filterable evidence ledger, and the Qloo trace.
-- Honest statuses: partial and interrupted runs are labelled as such, with the reason.
-- Three featured reports from real completed runs, loaded from the database with zero Qloo calls.
-- **Watch the research:** any finished report replays its stored run events in about 20 seconds: the stages, the real Qloo queries, the adaptive decisions and the evidence filling in. It's labelled as a replay of a stored run throughout and starts no new research.
-- **Without Qloo, by contrast:** the same brief given to the same model with no data access. Code matches its picks against the report's Qloo ledger. Across the three featured reports (Oct 27), 1 of 32 plain-model suggestions appeared among the Qloo results Sondo collected for that audience; 4 further picks only repeated the brief's own anchors and are shown separately. Sondo's concepts cite 23 partners the plain model never named. The panel lists the partners only Sondo found, each linked to its Qloo result.
-- **Link previews:** each report URL unfurls with its own image (brand, market, concept names, ledger size).
+- **The paying user:** brand and growth teams at DTC, CPG and hospitality companies without an insights department, and agency strategists who need a defensible first-pass cultural brief before a client workshop.
+- **The product path:**
+  1. Team workspaces with saved briefs and report history.
+  2. Exports to slides and docs, so a report drops straight into a pitch.
+  3. Brief-to-brief comparison: the same audience across two cities, or two audiences in one city.
+  4. A stronger paid model behind the same validator, to cut the partial rate.
+- **Closing the loop.** Each concept already ships with a "how to validate" plan. The next step is recording the test outcome against the concept, so teams build their own evidence over time.
+- **Business model:** a per-seat subscription for in-house teams, plus agency plans priced per client workspace. Sondo is a first-pass research tool, not a replacement for a full study.
 
-## What makes it innovative
+### Demo instructions for judges
 
-- **Evidence-locked generation.** The model never writes ids, scores or numbers. It references `E#`, and code renders every number from parsed Qloo responses.
-- **Citation relevance, not just citation validity.** A real `E#` that doesn't relate to its sentence is dropped. An evidence claim left without a relevant citation is shown as a hypothesis.
-- **Audience-vs-baseline lift on Qloo.** Paired queries reveal what's distinctive for this audience, which a single affinity list can't show.
-- **Bounded agency with visible decisions.** The model chooses research moves from a typed menu, code checks each one, and the report shows every decision and its outcome.
+No login, payment or setup. Everything below runs on the live site.
 
-## Potential impact
-
-- **Who:** brand and growth marketers at DTC, CPG and hospitality brands without insights teams, and agency strategists preparing a first-pass cultural brief before a client workshop.
-- **Use cases:** choosing launch partners in a new city, picking a podcast or creator category for a sponsorship test, finding a non-obvious co-brand, and building a defensible creative territory for a pitch.
-- **Why it's credible:** each recommendation comes with its evidence and a "how to validate" test plan. Teams can take the concepts into a small, cheap test instead of a large bet. Sondo doesn't claim to predict sales.
-
-## Challenges
-
-- **Free-model reliability.** The $0 model sometimes answers in prose instead of submitting structured output, or times out. We added structured output via a forced tool call, a compact-digest retry for the strategy step that runs only when the deadline allows, deterministic fixes when repair fails, and best-of selection between draft and repair. All of these use the same validator.
-- **Models cite the wrong thing.** Early runs had real `E#` ids attached to unrelated sentences. We built a deterministic relevance check (names, tags, category words) and a downgrade-to-hypothesis rule.
-- **Inline ids and numbers.** The model wrote "(E11)" into prose, and the number rule withheld whole insights. Ids are now stripped before validation, with a regression test.
-- **Unsupported params return 200.** Qloo silently ignores params it doesn't support, so every param is checked against a per-type allowlist in code, verified by a live probe.
-- **Serverless runs that outlive the request.** Runs execute under `after()`, coordinate only through Postgres with conditional status updates, retry the final write with backoff, and mark stale rows as `interrupted` instead of leaving them "running".
-
-## Demo instructions (about 3 minutes)
-
-1. Open **https://sondo.xylolabs.space**. Read the hero, then scroll to the featured reports.
-2. Open a featured report (for example *Stride Loop · New York City*):
-   - Check the cover line "Grounded in N Qloo results across M categories".
+1. Open **https://sondo.xylolabs.space** and scroll to **Featured reports**.
+2. Open **Stride Loop · New York City**:
+   - The cover shows how many Qloo results across how many categories ground the report.
    - Switch between the three concept tabs.
-   - Click any `E#` chip to see the Qloo result behind a claim, and note the three evidence tiers.
-   - Read **Without Qloo, by contrast**: what a plain model suggests from the same brief, next to the partners only Sondo found with Qloo.
-   - Press **Watch the research** to see the agent's run replayed in about 20 seconds.
-   - Scroll to the lift and distinctiveness charts, the evidence ledger and "Run details and Qloo trace".
-3. Click **New brief**, choose an example (or write your own) and submit.
-4. Watch the live research view: real Qloo queries, the budget, evidence per category and adaptive decisions. A run takes about 1.5–3 minutes. You can leave and come back; it keeps running.
-5. When it finishes, copy the report link and open it in a private window. The report persists and is shareable.
+   - Click any `E#` chip to open the Qloo result behind that claim, and note the three evidence tiers.
+   - Read **Without Qloo, by contrast**: what a plain model suggests for the same brief, next to the partners only Sondo found.
+   - Press **Watch the research** to replay the agent's run in about 20 seconds.
+   - Scroll to the lift and distinctiveness charts, the evidence ledger and **Run details and Qloo trace**.
+3. Click **New brief**, pick an example (or write your own) and submit. The live view shows the real Qloo queries, the budget and the evidence per category. A run takes about 2–3 minutes, and it keeps running if you leave.
+4. When it finishes, copy the report link and open it in a private window. The report is stored and shareable.
 
-A run may finish as **partial**. That means the agent couldn't ground all three concepts, and the report says why. That's intended: Sondo won't present an unsupported concept as a finding.
+A run can finish as **partial**: the agent couldn't ground all three concepts, and the report says why. That's by design. Each visitor gets a few live runs a day to protect the shared Qloo quota; the featured reports are always available.
 
-## Optional 2-minute demo script
+---
 
-| Time | Show | Say |
+## Pitch kit
+
+### 30-second elevator pitch
+
+> Every brand launch needs cultural partners, and most teams pick them by gut or ask an AI that guesses confidently. Sondo is an AI strategist that actually does the research. Give it a brief and it queries Qloo's taste graph live, compares your audience against the whole market, and writes three campaign concepts where every claim links to the Qloo result behind it. When we gave the same model the same briefs without Qloo, 1 of its 32 picks showed up in what Qloo found for those audiences. Sondo is strategy you can defend.
+
+### 90-second live demo
+
+| Time | Screen | Say |
 |---|---|---|
-| 0:00 | Landing | "Marketers pick cultural partners by gut feel, and LLMs just guess confidently. Sondo researches Qloo's taste graph and cites it." |
-| 0:15 | New brief → example → submit | "A brand, an audience, a city and a few things they love." |
-| 0:30 | Live view | "These are the real Qloo queries running now: each category twice, once for this audience and once as a city baseline. The agent decides what to research next, and code checks every move." |
-| 1:00 | Finished report (or a featured one) | "Three concepts with different angles. Green claims are directly supported, and this one is marked as a creative bet." |
-| 1:20 | Click an `E#` | "Every claim opens the Qloo result behind it: rank, popularity, tags and the query that produced it." |
-| 1:40 | Charts, trace | "Lift shows what over-indexes for this audience, labelled as our heuristic. The full Qloo trace, key-free." |
-| 1:55 | Copy link | "Shareable and persistent. No login." |
+| 0:00 | Landing | "Brands choose cultural partners (artists, shows, podcasts, venues) by gut feel. AI copilots just guess faster. Sondo researches and cites." |
+| 0:12 | New brief → example → submit | "A brand, an audience, a city, a goal and a couple of things they already love." |
+| 0:20 | Live view | "These are the real Qloo queries running now: each category twice, once for this audience and once for the whole market. The agent picks follow-ups from a fixed menu, and code checks each move against the budget." |
+| 0:35 | Open the featured Stride Loop report (the live run continues in the background) | "Here's a finished run. Three concepts with different angles: a mainstream anchor, a niche and a cross-category bridge." |
+| 0:45 | Click an `E#` chip | "Every claim opens the Qloo result behind it: rank, popularity, tags and the query. Green is directly supported. This one is labelled a creative hypothesis: Sondo won't pass a guess off as a finding." |
+| 1:00 | Without Qloo panel | "The same model, the same brief, no Qloo. One of its 32 picks appeared in what Qloo found for these audiences. These are the partners only Sondo found." |
+| 1:12 | Lift chart | "Lift: what ranks higher for this audience than for the city. It's labelled as our heuristic, and Sondo never claims ROI." |
+| 1:20 | Back to the live run, or the copied link | "The run finished while we talked. It's a permanent, shareable report. For a brand team, that's a defensible first-pass cultural brief in minutes, with a test plan for each idea." |
 
-## Evaluation (live)
+If the live run hasn't finished by 1:20, or comes back partial, say so: "It's labelled partial because it couldn't ground every concept. That's the system working."
 
-The 5 fixed briefs are run with `pnpm eval` against live Qloo (no cache) and the production model. Metrics only are written to `scripts/output/`. See the [Phase 5 results in ROADMAP.md](ROADMAP.md#phase-5-results-2026-10-27).
+### Five likely judge questions
 
-## Links
+1. **"Isn't this just ChatGPT with an API call?"**
+   No. The model can't produce evidence. Code assigns every `E#` from parsed Qloo responses, checks that each citation relates to its sentence, removes invented numbers, and downgrades unsupported claims to hypotheses. The Without Qloo panel shows the gap: 1 of 32 plain-model picks appeared among Qloo's results for those audiences.
 
-- Live app: https://sondo.xylolabs.space
-- Repository: https://github.com/lijnati/sondo
-- License: MIT
+2. **"How do you know the citations are right?"**
+   There are three layers, all in code. Each citation must exist in the run's ledger. It must relate to the sentence that cites it (names, tags and category words; `lib/agent/relevance.ts`). And a run is `completed` only if all three concepts clear a grounding bar and the stored report re-validates. Across the live evals, invalid citations in output were 0. Relevance is a consistency check, not fact-checking, and we say that in the README.
+
+3. **"Why do some runs come back partial?"**
+   We run a free model on purpose, and it sometimes under-cites or times out. Instead of hiding that, the integrity gate stores the run as `partial` and explains why. A stronger paid model behind the same validator is the obvious lever; the validation logic doesn't change.
+
+4. **"Who pays for this?"**
+   Brand and growth teams at DTC, CPG and hospitality companies that don't have an insights department, and agency strategists preparing pitches. Today they pay for panels and consultants or rely on gut feel. Sondo produces a cited first pass in minutes, with a test plan, so the expensive research goes where it's needed.
+
+5. **"Does affinity mean people will buy?"**
+   No, and Sondo says so on every report. Affinity is Qloo's relevance score for a query, not purchase intent, audience share or ROI. Lift and distinctiveness are labelled as Sondo heuristics, and every concept comes with a cheap way to test it before a real budget goes in.
+
+### Why Sondo can be a company
+
+- **A real, recurring job.** Every launch, market entry and sponsorship decision needs a cultural rationale, and most teams can't afford a research study for each one.
+- **Trust is the moat.** Generic AI copy is a commodity. Auditable strategy, where every claim opens its source and the tool says what it can't support, is what an agency can put in front of a client.
+- **It compounds.** Each concept carries a test plan. Recording outcomes against concepts builds evidence specific to a team's own audiences.
+- **It's already shaped like a product:** shareable reports, abuse limits, persistence, replay and link previews are all live today.
+
+---
+
+## Submission assets
+
+Screenshots of the live production site (captured Oct 29 with Playwright Chromium; desktop 1440 × 900 at 2×, mobile 390 × 844 at 3×). They're kept out of git because they show Qloo results; the files are in the gitignored `.qa/submission/` folder.
+
+| File | Use |
+|---|---|
+| `00-cover-3x2.png` | Devpost thumbnail (3:2): the landing hero |
+| `01-landing-hero.png` | Gallery 1: what Sondo is |
+| `02-report-cover.png` | Gallery 2: report cover with the grounding line |
+| `03-report-concepts.png` | Gallery 3: a concept with evidence tiers |
+| `04-evidence-drawer.png` | Gallery 4: an `E#` opened to its Qloo result |
+| `05-without-qloo.png` | Gallery 5: the Without Qloo contrast |
+| `06-signals-lift.png` | Gallery 6: lift and distinctiveness |
+| `07-ledger.png` | Evidence ledger |
+| `08-new-brief.png` | Brief composer |
+| `09-replay-midrun.png` | Research replay, mid-run |
+| `10-mobile-landing.png`, `11-mobile-concept.png` | Mobile |
+
+The logo masters are in `public/brand/`. A demo video is optional (Devpost: "Demo videos are not required") and wasn't recorded.
+
+## Where the numbers come from
+
+| Claim | Source |
+|---|---|
+| 1 of 32 plain-model picks, 23 partners only Sondo cited | `pnpm contrast --featured`, Oct 27, stored in `report_contrasts` |
+| Featured reports: 106, 94 and 93 Qloo results | Featured runs `VTuxwl03jMKD`, `DseEb2AHvHWh` and `3KZLO3daGGPB` |
+| Live eval results | `scripts/output/eval-summary.json`; see [ROADMAP.md, Phase 6](ROADMAP.md#phase-6-results-2026-10-29) |
+| Lighthouse accessibility 100 | Production run, Oct 27 (ROADMAP.md, Phase 5) |
+| Test counts | `pnpm test` and `pnpm e2e`, Oct 29 (ROADMAP.md, Phase 6) |

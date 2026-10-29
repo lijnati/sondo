@@ -1,6 +1,6 @@
 # HACKATHON.md — Rules, judging strategy, deliverables, compliance
 
-Sources (retrieved 2026-10-15):
+Sources (retrieved 2026-10-15; dates and requirements re-checked 2026-10-29):
 - Official rules: https://qloo.devpost.com/rules
 - Overview / requirements: https://qloo.devpost.com/
 - Developer guide (page `updatedAt: 2026-10-07`): https://docs.qloo.com/reference/qloo-llm-hackathon-developer-guide
@@ -13,8 +13,8 @@ Sources (retrieved 2026-10-15):
 |---|---|
 | Registration and submission period | Sep 30, 2026 9:00 am – **Oct 30, 2026 11:45 pm** |
 | **Sondo internal submission target** | **Oct 29, 2026 6:00 pm** (about 30 h buffer) |
-| Judging period | Nov 2, 2026 12:00 pm – Nov 16, 2026 11:45 pm |
-| Winners announced | On or around Nov 23, 2026 3:00 pm |
+| Judging period | Nov 2, 2026 12:00 pm – **Nov 5, 2026 11:45 pm** (shortened from Nov 16; rules re-checked Oct 29) |
+| Finalists | The top 3 present live on air with Jason Calacanis, Cedric the Entertainer and Alex Elias on **Nov 5**, and the winner is picked there. Finalists are notified soon after the close and must be available to prepare. |
 
 Submissions can't be edited after Oct 30, 11:45 pm (Rules §5). Qloo hackathon keys stay active through judging and are deactivated after the hackathon (dev guide).
 
@@ -37,7 +37,7 @@ Required by both the rules and the overview page:
 2. **Public repo URL** (GitHub, GitLab or Bitbucket) with all source, assets and run instructions.
 3. **Open source license file**, "detectable and visible at the top of the repository page (in the About section)". GitHub only detects a standard `LICENSE` file at the repo root.
 4. **Text description** of the features and functionality, plus what makes the project "Qloo-powered".
-5. **Free, unrestricted access** for the sponsor, administrator and judges **until the Judging Period ends (Nov 16)**. If login is required, test credentials must be provided. Sondo will have **no login**.
+5. **Free, unrestricted access** for the sponsor, administrator and judges **until the Judging Period ends (Nov 5)**. If login is required, test credentials must be provided. Sondo will have **no login**.
 6. Materials in English.
 - A demo video is **not required** (overview page). But the rules say judges "may choose to judge based solely on the text description, images, and video". A short optional video and screenshots are cheap insurance.
 
@@ -66,7 +66,7 @@ Required by both the rules and the overview page:
 | # | Risk | Severity | Mitigation |
 |---|---|---|---|
 | C1 | **No Qloo API key yet.** Keys are "provisioned manually … a few business days". 15 days remain. | **Critical** | Request a key today if not already done. Ask in Discord #api-help if there's no key by Oct 17. The spike is ready to run (`spike/qloo-feasibility.ts`). |
-| C2 | The demo must stay live and free until **Nov 16**. Quota or LLM spend could be exhausted by judges or the public. | High | Private server-side Qloo cache (explicitly allowed), featured pre-run reports, per-IP and global daily run caps, and a degraded "cached examples only" mode. Request a quota increase in #api-help. |
+| C2 | The demo must stay live and free until **Nov 5** (end of judging). Quota or LLM spend could be exhausted by judges or the public. | High | Private server-side Qloo cache (explicitly allowed), featured pre-run reports, per-IP and global daily run caps, and a degraded "cached examples only" mode. Request a quota increase in #api-help. |
 | C3 | **No Qloo response data in a public repo** (dev guide). | High | Test fixtures are synthetic (fictional names and fake IDs). Caches and reports live in a private DB. The spike summary is sanitized. `.gitignore` blocks `.qloo-cache/`. |
 | C4 | The license must be detected in the GitHub About section. | Medium | Add a standard MIT `LICENSE` at the root in Phase 1, then verify the About sidebar shows it. |
 | C5 | Stage One "reasonably applies the required APIs". | Low | Qloo is the core evidence source. No report can be produced without Qloo evidence (enforced by the validator). |
@@ -75,12 +75,12 @@ Required by both the rules and the overview page:
 | C8 | Overclaiming (affinity presented as purchase intent or ROI). | Medium (credibility) | Language rules in PRODUCT.md §6, plus a validator that blocks forbidden claim patterns. |
 
 ## 8. Submission checklist (complete on Oct 29)
-- [x] Production URL loads without login on desktop and mobile. A brand-new brief completes end to end (Oct 27, run `Fla2JFlK1e1C`, completed).
+- [x] Production URL loads without login on desktop and mobile. A brand-new brief completes end to end (Oct 27, run `Fla2JFlK1e1C`; re-verified Oct 29, run `VtYGJ6KS6IIg`, completed, via the live e2e on production).
 - [x] Featured example reports load from the database with zero Qloo calls (time to first byte 0.7–1.1 s).
 - [x] Public GitHub repo, with `LICENSE` (MIT) shown in About (Oct 27).
 - [x] README covers the problem, what makes it Qloo-powered, architecture diagram, Qloo endpoints used, run instructions, env vars and limitations.
-- [x] No secrets in git history (a full `git log -p --all` scan; the only hit is a fake `db.example.test` test URL). No raw Qloo payloads committed.
-- [ ] Devpost text description (drafted in [SUBMISSION.md](SUBMISSION.md)). Screenshots still to attach. Optional 2-min video (script in SUBMISSION.md).
+- [x] No secrets in git history (a full `git log -p --all` scan on Oct 27; commits since then re-scanned Oct 29, clean; the only hit is a fake `db.example.test` test URL). No raw Qloo payloads committed.
+- [x] Devpost text, field by field, in [SUBMISSION.md](SUBMISSION.md) (Oct 29). Production screenshots and a 3:2 cover are in the gitignored `.qa/submission/`, ready to upload. A video is optional and was not recorded.
 - [x] Testing instructions: "No login. Click any example or create a brief." (SUBMISSION.md demo steps, plus the landing FAQ.)
-- [~] Rate limits and kill switch verified by tests (PGlite and route), not on production. Qloo key validity through Nov 16 not yet confirmed with Qloo; the quota request is still to send.
+- [~] Rate limits and kill switch verified by tests (PGlite and route), not on production. Qloo key validity through the end of judging (now Nov 5) not yet confirmed with Qloo; the quota request is still to send.
 - [ ] Submitted on Devpost before **Oct 29, 6:00 pm ET**. Confirmation screenshot saved.
